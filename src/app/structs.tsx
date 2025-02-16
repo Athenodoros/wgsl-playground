@@ -53,7 +53,7 @@ export const StructDisplay: React.FC<{ struct: StructInfo }> = ({ struct }) => {
                 {struct.name}: {struct.size} bytes
             </p>
             <div className="flex justify-between">
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-2">
                     {entries
                         .filter((m) => m.name !== "padding")
                         .map((m) => (
@@ -62,10 +62,10 @@ export const StructDisplay: React.FC<{ struct: StructInfo }> = ({ struct }) => {
                                     className="w-3 h-3 rounded-full"
                                     style={{ backgroundColor: m.styles.backgroundColor }}
                                 />
-                                <p key={m.name} className="text-sm">
+                                <p key={m.name} className="text-sm leading-none !mb-0">
                                     {m.name}
                                 </p>
-                                <p className="text-sm italic text-slate-500">{m.description}</p>
+                                <p className="text-sm italic text-slate-500 leading-none !mb-0">{m.description}</p>
                             </span>
                         ))}
                 </div>
