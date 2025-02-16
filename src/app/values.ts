@@ -70,7 +70,7 @@ export const getDefaultValue = (type: TypeInfo, structs: StructInfo[], isTopLeve
                 .join(", ");
             values.push([
                 `${member.name}: ${getTypeDisplay(member.type)}${gap ? ` (+${gap * 4} bytes padding)` : ""}`,
-                result.value + (padding ? `, ${padding}` : ""),
+                result.value + (padding ? `, ${padding}` : "") + (idx === results.length - 1 ? "" : ","),
             ]);
             offset = newOffset;
         }
@@ -81,7 +81,7 @@ export const getDefaultValue = (type: TypeInfo, structs: StructInfo[], isTopLeve
                 value: "[\n" + values.flatMap((v) => ["    // " + v[0], "    " + v[1]]).join("\n") + "\n]",
             };
         } else {
-            return { type: "values", value: values.map((v) => v[1]).join(", ") };
+            return { type: "values", value: values.map((v) => v[1]).join(" ") };
         }
     }
 
