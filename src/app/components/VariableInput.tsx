@@ -1,21 +1,23 @@
 import { Editor } from "@monaco-editor/react";
 import React from "react";
-import { StructInfo, TypeInfo } from "wgsl_reflect";
-import { getDefaultValue } from "./values";
 
-export const VariableInput: React.FC<{ type: TypeInfo; structs: StructInfo[] }> = ({ type, structs }) => {
-    const value = getDefaultValue(type, structs, true);
-
-    return value.type === "values" ? (
+export const VariableInput: React.FC<{
+    value: string;
+    isError: boolean;
+    onChange: (value?: string) => void;
+}> = ({ value, isError, onChange }) => {
+    return (
         <Editor
-            height={value.value.split("\n").length * 18}
+            className={isError ? "border-red-500 border-1" : ""}
+            height={value.split("\n").length * 18}
             defaultLanguage="json"
-            defaultValue={value.value}
+            defaultValue={value}
             options={{
                 minimap: { enabled: false },
                 scrollBeyondLastLine: false,
                 scrollbar: { handleMouseWheel: false },
             }}
+            onChange={onChange}
             beforeMount={(monaco) =>
                 monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
                     validate: true,
@@ -24,7 +26,5 @@ export const VariableInput: React.FC<{ type: TypeInfo; structs: StructInfo[] }> 
                 })
             }
         />
-    ) : (
-        <p className="text-sm italic">{value.value}</p>
     );
 };

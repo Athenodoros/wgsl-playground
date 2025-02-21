@@ -1,6 +1,6 @@
 import React from "react";
 import { StructInfo } from "wgsl_reflect";
-import { getTypeDisplay } from "./values";
+import { getTypeDisplay } from "../../utilities/values";
 
 export const StructDisplay: React.FC<{ struct: StructInfo }> = ({ struct }) => {
     const rows = Math.ceil(struct.size / 16);
@@ -56,15 +56,13 @@ export const StructDisplay: React.FC<{ struct: StructInfo }> = ({ struct }) => {
                 <div className="flex flex-col gap-2">
                     {entries
                         .filter((m) => m.name !== "padding")
-                        .map((m) => (
-                            <span key={m.name} className="flex gap-1 items-center">
+                        .map((m, idx) => (
+                            <span key={idx} className="flex gap-1 items-center">
                                 <span
                                     className="w-3 h-3 rounded-full"
                                     style={{ backgroundColor: m.styles.backgroundColor }}
                                 />
-                                <p key={m.name} className="text-sm leading-none !mb-0">
-                                    {m.name}
-                                </p>
+                                <p className="text-sm leading-none !mb-0">{m.name}</p>
                                 <p className="text-sm italic text-slate-500 leading-none !mb-0">{m.description}</p>
                             </span>
                         ))}

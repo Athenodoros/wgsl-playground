@@ -112,6 +112,12 @@ export const uniqBy = <T, S>(array: T[], getter: (t: T) => S) =>
     uniqEquals(array, (t1, t2) => getter(t1) === getter(t2));
 export const uniq = <T>(array: T[]): T[] => array.filter((t1, idx) => array.findIndex((t2) => t1 === t2) === idx);
 
+export const repeat = <T>(array: T[], count: number): T[] => {
+    const result = [];
+    for (let i = 0; i < count; i++) result.push(...array);
+    return result;
+};
+
 /**
  * Object Utils
  */
