@@ -1,7 +1,6 @@
 import {
     AnchorButton,
     Button,
-    H6,
     MenuItem,
     MenuItemProps,
     Navbar,
@@ -13,8 +12,8 @@ import {
 import { Select } from "@blueprintjs/select";
 import { Editor } from "@monaco-editor/react";
 import { useEffect, useMemo, useState } from "react";
-import { WgslReflect } from "wgsl_reflect";
 import { DEFAULT_WGSL_CODE } from "../utilities/constants";
+import { RunnerFunctionOption, getFunctionRunOptions } from "../utilities/reflection";
 import { BindingsDisplay } from "./components/BindingsDisplay";
 import { StructDisplay } from "./components/StructDisplay";
 import { useAppState } from "./state";
@@ -23,12 +22,12 @@ export const App = () => {
     const parsed = useAppState((state) => state.parsed);
     const setWGSL = useAppState((state) => state.setWGSL);
 
-    const options = useMemo(() => (parsed.type === "error" ? [] : getRunOptions(parsed.reflection)), [parsed]);
+    const options = useMemo(() => (parsed.type === "error" ? [] : getFunctionRunOptions(parsed.reflection)), [parsed]);
 
     const [openSection, setOpenSection] = useState<"structs" | "bindings" | "run">("run");
     const [running, setRunning] = useState<boolean>(false);
 
-    const [output, setOutput] = useState<CallOption | null>(null);
+    const [output, setOutput] = useState<RunnerFunctionOption | null>(null);
     useEffect(
         () => setOutput((out) => (out === null || !options.find((o) => o.id === out.id) ? options[0] ?? null : out)),
         [options]
@@ -132,111 +131,102 @@ export const App = () => {
                     >
                         <SectionCard padded={true}>
                             <div className="flex flex-col gap-4">
-                                <div className="flex gap-4 justify-between">
-                                    <Select<CallOption>
-                                        items={options}
-                                        itemRenderer={renderCallOption}
-                                        onItemSelect={setOutput}
-                                        // popoverProps={{ matchTargetWidth: true }}
-                                    >
-                                        <Button
-                                            {...getCallOptionProps(output)}
-                                            outlined={true}
-                                            intent="primary"
-                                            // className="!min-w-2xs [&>.bp5-button-text]:!grow"
-                                            rightIcon="chevron-down"
-                                            disabled={options.length === 0}
-                                        />
-                                    </Select>
+                                <div className="flex justify-between items-center">
+                                    <p className="!mb-0 bg-slate-100 py-1 px-2 rounded-md">Run Target</p>
                                     <div className="flex gap-2">
-                                        <Button
-                                            className="w-24"
-                                            minimal={true}
-                                            intent="primary"
-                                            text={running ? undefined : "Run Once"}
-                                            disabled={!output || running}
-                                            loading={running}
-                                        />
+                                        <Select<RunnerFunctionOption>
+                                            items={options}
+                                            itemRenderer={renderCallOption}
+                                            onItemSelect={setOutput}
+                                            // popoverProps={{ matchTargetWidth: true }}
+                                        >
+                                            <Button
+                                                {...getCallOptionProps(output)}
+                                                outlined={true}
+                                                intent="primary"
+                                                // className="!min-w-2xs [&>.bp5-button-text]:!grow"
+                                                rightIcon="chevron-down"
+                                                disabled={options.length === 0}
+                                            />
+                                        </Select>
                                         <Button
                                             className="w-28"
                                             intent={running ? "danger" : "primary"}
-                                            text={running ? "Stop Running" : "Start Running"}
+                                            text={running ? "Stop Running" : "Run On Loop"}
                                             onClick={() => setRunning((running) => !running)}
                                             disabled={!output}
                                         />
                                     </div>
                                 </div>
-                                <div className="flex justify-between items-center">
-                                    {output?.type === "compute" ? (
-                                        <>
-                                            <div className="flex gap-2 items-center">
-                                                <H6 className="!mb-0">Work Group Size</H6>
-                                                <p className="text-sm text-slate-500 !mb-0 italic">(X, Y, Z)</p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <NumericInput
-                                                    placeholder="X"
-                                                    allowNumericCharactersOnly={true}
-                                                    buttonPosition="none"
-                                                    className="[&>.bp5-input-group]:!w-20"
-                                                    defaultValue={output.threads[0]}
-                                                    onValueChange={(value) =>
-                                                        setOutput({
-                                                            ...output,
-                                                            threads: [value, output.threads[1], output.threads[2]],
-                                                        })
-                                                    }
-                                                />
-                                                <NumericInput
-                                                    placeholder="Y"
-                                                    allowNumericCharactersOnly={true}
-                                                    buttonPosition="none"
-                                                    className="[&>.bp5-input-group]:!w-20"
-                                                    defaultValue={output.threads[1]}
-                                                    onValueChange={(value) =>
-                                                        setOutput({
-                                                            ...output,
-                                                            threads: [output.threads[0], value, output.threads[2]],
-                                                        })
-                                                    }
-                                                />
-                                                <NumericInput
-                                                    placeholder="Z"
-                                                    allowNumericCharactersOnly={true}
-                                                    buttonPosition="none"
-                                                    className="[&>.bp5-input-group]:!w-20"
-                                                    defaultValue={output.threads[2]}
-                                                    onValueChange={(value) =>
-                                                        setOutput({
-                                                            ...output,
-                                                            threads: [output.threads[0], output.threads[1], value],
-                                                        })
-                                                    }
-                                                />
-                                            </div>
-                                        </>
-                                    ) : output?.type === "render" ? (
-                                        <>
-                                            <div className="flex gap-2 items-center">
-                                                <H6 className="!mb-0">Vertices</H6>
-                                                <p className="text-sm text-slate-500 !mb-0 italic">(Count)</p>
-                                            </div>
-                                            <div className="flex gap-2 items-center">
-                                                <NumericInput
-                                                    placeholder="Count"
-                                                    allowNumericCharactersOnly={true}
-                                                    buttonPosition="none"
-                                                    className="[&>.bp5-input-group]:!w-20"
-                                                    defaultValue={output.vertices}
-                                                    onValueChange={(value) => setOutput({ ...output, vertices: value })}
-                                                />
-                                            </div>
-                                        </>
-                                    ) : null}
-                                </div>
+                                {output?.type === "compute" ? (
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex gap-2 items-center">
+                                            <p className="!mb-0 bg-slate-100 py-1 px-2 rounded-md">Work Group Size</p>
+                                            <p className="text-sm text-slate-400 !mb-0 italic">(X, Y, Z)</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <NumericInput
+                                                placeholder="X"
+                                                allowNumericCharactersOnly={true}
+                                                buttonPosition="none"
+                                                className="[&>.bp5-input-group]:!w-20"
+                                                defaultValue={output.threads[0]}
+                                                onValueChange={(value) =>
+                                                    setOutput({
+                                                        ...output,
+                                                        threads: [value, output.threads[1], output.threads[2]],
+                                                    })
+                                                }
+                                            />
+                                            <NumericInput
+                                                placeholder="Y"
+                                                allowNumericCharactersOnly={true}
+                                                buttonPosition="none"
+                                                className="[&>.bp5-input-group]:!w-20"
+                                                defaultValue={output.threads[1]}
+                                                onValueChange={(value) =>
+                                                    setOutput({
+                                                        ...output,
+                                                        threads: [output.threads[0], value, output.threads[2]],
+                                                    })
+                                                }
+                                            />
+                                            <NumericInput
+                                                placeholder="Z"
+                                                allowNumericCharactersOnly={true}
+                                                buttonPosition="none"
+                                                className="[&>.bp5-input-group]:!w-20"
+                                                defaultValue={output.threads[2]}
+                                                onValueChange={(value) =>
+                                                    setOutput({
+                                                        ...output,
+                                                        threads: [output.threads[0], output.threads[1], value],
+                                                    })
+                                                }
+                                            />
+                                        </div>
+                                    </div>
+                                ) : output?.type === "render" ? (
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex gap-2 items-center">
+                                            <p className="!mb-0 bg-slate-100 py-1 px-2 rounded-md">Vertices</p>
+                                            <p className="text-sm text-slate-400 !mb-0 italic">(Count)</p>
+                                        </div>
+                                        <div className="flex gap-2 items-center">
+                                            <NumericInput
+                                                placeholder="Count"
+                                                allowNumericCharactersOnly={true}
+                                                buttonPosition="none"
+                                                className="[&>.bp5-input-group]:!w-20"
+                                                defaultValue={output.vertices}
+                                                onValueChange={(value) => setOutput({ ...output, vertices: value })}
+                                            />
+                                        </div>
+                                    </div>
+                                ) : null}
                             </div>
                         </SectionCard>
-                        <SectionCard padded={true}>Output Two!</SectionCard>
+                        <SectionCard padded={true}>Function Output...</SectionCard>
                     </Section>
                 </div>
             </div>
@@ -247,7 +237,7 @@ export const App = () => {
 const ContainerClasses =
     "[&>.bp5-section-header]:shrink-0 [&>.bp5-collapse]:!overflow-y-auto flex flex-col min-h-[50px]";
 
-const renderCallOption = (option: CallOption) => {
+const renderCallOption = (option: RunnerFunctionOption) => {
     return (
         <MenuItem
             key={option.id}
@@ -257,7 +247,7 @@ const renderCallOption = (option: CallOption) => {
     );
 };
 
-const getCallOptionProps = (option: CallOption | null): Pick<MenuItemProps, "icon" | "text"> => {
+const getCallOptionProps = (option: RunnerFunctionOption | null): Pick<MenuItemProps, "icon" | "text"> => {
     if (!option) {
         return { icon: "widget", text: "No options available" };
     }
@@ -272,40 +262,4 @@ const getCallOptionProps = (option: CallOption | null): Pick<MenuItemProps, "ico
         case "function":
             return { icon: "variable", text: `${option.name}` };
     }
-};
-
-type CallOption =
-    | { id: string; type: "compute"; name: string; threads: [number, number, number] }
-    | { id: string; type: "function"; name: string }
-    | { id: string; type: "render-triangles"; vertex: string }
-    | { id: string; type: "render"; vertex: string; fragment: string; vertices: number };
-
-const getRunOptions = (reflection: WgslReflect) => {
-    const fragments = reflection.functions.filter((f) => f.stage === "fragment");
-
-    return reflection.functions.flatMap((f): CallOption[] => {
-        if (f.stage === null) {
-            return [{ id: `function-${f.name}`, type: "function", name: f.name }];
-        }
-
-        if (f.stage === "compute") {
-            return [{ id: `compute-${f.name}`, type: "compute", name: f.name, threads: [1, 1, 1] }];
-        }
-
-        if (f.stage === "vertex") {
-            return [
-                { id: `render-triangles-${f.name}`, type: "render-triangles", vertex: f.name } as CallOption,
-            ].concat(
-                fragments.map((frag) => ({
-                    id: `render-${f.name}-${frag.name}`,
-                    type: "render",
-                    vertex: f.name,
-                    fragment: frag.name,
-                    vertices: 3,
-                }))
-            );
-        }
-
-        return [];
-    });
 };

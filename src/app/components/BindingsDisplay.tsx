@@ -37,14 +37,14 @@ export const BindingsDisplay: React.FC<BindingsDisplayProps> = ({ binding, struc
 
     return (
         <div className="mr-4">
-            <div className="flex justify-between mb-1 ml-4">
-                <div className="flex items-end gap-1">
-                    <p className="text-sm font-bold leading-none">{binding.name}</p>
-                    <p className="text-xs italic text-gray-500 leading-none">
+            <div className="flex justify-between mb-2 ml-4">
+                <div className="flex items-center gap-1">
+                    <pre className="text-sm leading-none bg-slate-100 py-1 px-2 rounded-md">{binding.name}</pre>
+                    <p className="text-xs italic text-gray-500 leading-none !mb-0">
                         (Group {group}, Binding {index})
                     </p>
                 </div>
-                <p className="text-sm italic">{getTypeDisplay(binding.type)}</p>
+                <p className="text-sm italic !mb-0">{getTypeDisplay(binding.type)}</p>
             </div>
             <VariableInput value={localValue} onChange={handleChange} isError={error} />
         </div>
