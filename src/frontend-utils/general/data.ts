@@ -28,6 +28,12 @@ export const orderByDesc = <T>(array: T[], ...valuers: ((t: T) => any)[]) => {
     return copy;
 };
 
+export const repeat = <T>(array: T[], count: number): T[] => {
+    const result = [];
+    for (let i = 0; i < count; i++) result.push(...array);
+    return result;
+};
+
 /**
  * Max By
  */
@@ -57,6 +63,9 @@ export async function maxByAsync<T>(
  */
 export const noop = (): void => void null;
 export const identity = <T>(t: T) => t;
+export const assertNever = (value: never): never => {
+    throw new Error(`Unexpected value: ${JSON.stringify(value)}`);
+};
 
 /**
  * Deep Equality
@@ -112,12 +121,6 @@ export const uniqBy = <T, S>(array: T[], getter: (t: T) => S) =>
     uniqEquals(array, (t1, t2) => getter(t1) === getter(t2));
 export const uniq = <T>(array: T[]): T[] => array.filter((t1, idx) => array.findIndex((t2) => t1 === t2) === idx);
 
-export const repeat = <T>(array: T[], count: number): T[] => {
-    const result = [];
-    for (let i = 0; i < count; i++) result.push(...array);
-    return result;
-};
-
 /**
  * Object Utils
  */
@@ -127,3 +130,9 @@ export const fromKeys = <K extends string | number | symbol, V>(keys: K[], getVa
     Object.fromEntries(keys.map((key) => [key, getValue(key)])) as Record<K, V>;
 export const pick = <T extends object, K extends keyof T>(obj: T, keys: K[]) =>
     fromKeys(keys, (key) => obj[key]) as Pick<T, K>;
+export const omit = <T extends object, K extends keyof T>(obj: T, keys: K[]) =>
+    fromKeys(
+        Object.keys(obj).filter((key) => !keys.includes(key as K)),
+        (key) => (obj as Record<string, unknown>)[key]
+    ) as Omit<T, K>;
+

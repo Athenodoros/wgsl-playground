@@ -1,22 +1,39 @@
+import { SectionCard } from "@blueprintjs/core";
 import React, { useCallback, useEffect, useState } from "react";
-import { StructInfo, VariableInfo } from "wgsl_reflect";
-import { getTypeDisplay, parseValueForType } from "../../utilities/values";
-import { useAppState } from "../state";
-import { VariableInput } from "./VariableInput";
+import { useAppState } from "../../state";
+import { WgslBinding } from "../../utilities/types";
+import { parseValueForType } from "../../utilities/values";
+import { RightSection } from "./RightSection";
+import { VariableDisplay } from "./VariableDisplay";
 
-interface BindingsDisplayProps {
-    binding: VariableInfo;
-    structs: StructInfo[];
-    group: number;
-    index: number;
-}
+export const BindingsDisplay: React.FC = () => {
+    const bindings = useAppState((state) => state.bindings);
 
-export const BindingsDisplay: React.FC<BindingsDisplayProps> = ({ binding, structs, group, index }) => {
-    const value = useAppState((state) => state.resources[`${group}:${index}`].input);
-    const updateResource = useAppState((state) => state.updateResource);
+    return (
+        <RightSection
+            title={`Binding Values (${bindings.length})`}
+            icon="property"
+            disabled={bindings.length === 0}
+            startClosed={true}
+        >
+            <SectionCard padded={false} className="my-4">
+                <div className="flex flex-col gap-4">
+                    {bindings.map((binding, index) => (
+                        <BindingDisplay key={index} binding={binding} />
+                    ))}
+                </div>
+            </SectionCard>
+        </RightSection>
+    );
+};
 
-    const [localValue, setLocalValue] = useState(value);
-    useEffect(() => setLocalValue(value), [value]);
+const BindingDisplay: React.FC<{ binding: WgslBinding }> = ({ binding }) => {
+    const readOnly = useAppState((state) => state.type === "failed-parse" || state.type === "loading");
+    const setBindingInput = useAppState((state) => state.setBindingInput);
+    const structs = useAppState((state) => state.structs);
+
+    const [localValue, setLocalValue] = useState(binding.input);
+    useEffect(() => setLocalValue(binding.input), [binding.input]);
     const [error, setError] = useState(false);
 
     const handleChange = useCallback(
@@ -29,24 +46,19 @@ export const BindingsDisplay: React.FC<BindingsDisplayProps> = ({ binding, struc
             if (output === null) setError(true);
             else {
                 setError(false);
-                updateResource(group, index, value, output);
+                setBindingInput(binding.id, value, output);
             }
         },
-        [group, index, binding.type, structs, updateResource]
+        [binding.id, binding.type, structs, setBindingInput]
     );
 
     return (
-        <div className="mr-4">
-            <div className="flex justify-between mb-2 ml-4">
-                <div className="flex items-center gap-1">
-                    <pre className="text-sm leading-none bg-slate-100 py-1 px-2 rounded-md">{binding.name}</pre>
-                    <p className="text-xs italic text-gray-500 leading-none !mb-0">
-                        (Group {group}, Binding {index})
-                    </p>
-                </div>
-                <p className="text-sm italic !mb-0">{getTypeDisplay(binding.type)}</p>
-            </div>
-            <VariableInput value={localValue} onChange={handleChange} isError={error} />
-        </div>
+        <VariableDisplay
+            binding={binding}
+            value={localValue}
+            isError={error}
+            onChange={handleChange}
+            readOnly={readOnly}
+        />
     );
 };

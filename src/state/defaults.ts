@@ -1,4 +1,7 @@
-export const DEFAULT_WGSL_CODE: string = `@group(0) @binding(0) var<uniform> scene: Scene;
+import { parseWGSL } from "../utilities/parseWGSL";
+import { AppState } from "./types";
+
+const DEFAULT_WGSL_CODE: string = `@group(0) @binding(0) var<uniform> scene: Scene;
 @group(0) @binding(1) var<storage, read> toxels: array<Toxel>; // 1 per toxel
 @group(0) @binding(2) var<storage, read_write> points: array<vec3f>; // 6 per facet (48 per toxel)
 @group(0) @binding(3) var<storage, read> triangle_counts: array<i32>; // 1 per facet (8 per toxel) - count per cube facet
@@ -87,3 +90,14 @@ fn project_3d_to_screen(point: vec3<f32>) -> vec3<f32> {
     return point2d.xyz / point2d.w;
 }
 `;
+
+const parsed = parseWGSL(DEFAULT_WGSL_CODE);
+if (parsed.type === "failed-parse") {
+    throw new Error(parsed.error);
+}
+
+export const INITIAL_APP_STATE: AppState = {
+    ...parsed,
+    type: "loading",
+    wgsl: DEFAULT_WGSL_CODE,
+};

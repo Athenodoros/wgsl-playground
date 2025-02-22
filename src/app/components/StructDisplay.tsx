@@ -1,8 +1,30 @@
+import { SectionCard } from "@blueprintjs/core";
 import React from "react";
 import { StructInfo } from "wgsl_reflect";
+import { useAppState } from "../../state";
 import { getTypeDisplay } from "../../utilities/values";
+import { RightSection } from "./RightSection";
 
-export const StructDisplay: React.FC<{ struct: StructInfo }> = ({ struct }) => {
+export const StructDisplay: React.FC = () => {
+    const structs = useAppState((state) => state.structs);
+
+    return (
+        <RightSection
+            title={`Struct Layouts (${structs.length})`}
+            icon="curly-braces"
+            disabled={structs.length === 0}
+            startClosed={true}
+        >
+            <SectionCard padded={true}>
+                {structs.map((s) => (
+                    <SingleStructDisplay key={s.name} struct={s} />
+                ))}
+            </SectionCard>
+        </RightSection>
+    );
+};
+
+const SingleStructDisplay: React.FC<{ struct: StructInfo }> = ({ struct }) => {
     const rows = Math.ceil(struct.size / 16);
 
     const entries = struct.members.flatMap((m, idx) => {
