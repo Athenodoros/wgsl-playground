@@ -1,4 +1,6 @@
-import { StructInfo, TypeInfo } from "wgsl_reflect";
+import { IconName, Intent } from "@blueprintjs/core";
+import { ReactNode } from "react";
+import { ResourceType, StructInfo, TypeInfo } from "wgsl_reflect";
 
 export interface WgslBinding {
     id: string;
@@ -7,6 +9,7 @@ export interface WgslBinding {
     name: string;
     type: TypeInfo;
     writable: boolean;
+    resourceType: ResourceType;
     input: string;
     buffer: ArrayBuffer;
 }
@@ -16,7 +19,17 @@ export interface WgslOutput {
     value: string;
 }
 
-interface RunnableComputeShader {
+export interface RunnerResultError {
+    title?: string;
+    text: ReactNode;
+    intent: Intent;
+    icon: IconName;
+}
+export type RunnerResults =
+    | { type: "outputs"; outputs: WgslOutput[] }
+    | { type: "errors"; errors: RunnerResultError[] };
+
+export interface RunnableComputeShader {
     id: string;
     type: "compute";
     name: string;
@@ -47,7 +60,7 @@ export interface RunnableRender {
 export type Runnable = RunnableComputeShader | RunnableRender; // | RunnableFunction | RunnableRenderTriangles;
 
 export interface ParseResults {
-    selected: string;
+    selected: Runnable | null;
     runnables: Runnable[];
     bindings: WgslBinding[];
     structs: StructInfo[];

@@ -4,12 +4,9 @@ import React from "react";
 import { useAppState } from "../../state";
 import { Runnable } from "../../utilities/types";
 
-interface RunnableInputsProps {
-    output: Runnable | null;
-    setOutput: (runnable: Runnable) => void;
-}
-
-export const RunnableInputs: React.FC<RunnableInputsProps> = ({ output, setOutput }) => {
+export const RunnableInputs: React.FC = () => {
+    const output = useAppState((state) => state.selected);
+    const setOutput = useAppState((state) => state.selectRunnable);
     const options = useAppState((state) => state.runnables);
 
     return (

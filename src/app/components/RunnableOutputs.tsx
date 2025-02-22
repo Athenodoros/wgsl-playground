@@ -1,10 +1,11 @@
-import { NonIdealState, SectionCard } from "@blueprintjs/core";
+import { Callout, NonIdealState, SectionCard } from "@blueprintjs/core";
 import { noop } from "../../frontend-utils/general/data";
 import { useAppState } from "../../state";
-import { Runnable } from "../../utilities/types";
 import { VariableDisplay } from "./VariableDisplay";
 
-export const RunnableOutputs: React.FC<{ output: Runnable | null }> = ({ output }) => {
+export const RunnableOutputs: React.FC = () => {
+    const parseError = useAppState((state) => (state.type === "failed-parse" ? state.error : null));
+    const output = useAppState((state) => state.selected);
     const setCanvas = useAppState((state) => state.setCanvas);
     const results = useAppState((state) => (state.type === "finished" ? state.results : null));
     const device = useAppState((state) => state.device);
@@ -21,19 +22,41 @@ export const RunnableOutputs: React.FC<{ output: Runnable | null }> = ({ output 
             </SectionCard>
         );
 
-    return (
-        <SectionCard padded={false} className="my-4">
-            <canvas className={output?.type === "render" ? "h-16 w-16" : "hidden"} ref={setCanvas} />
-            {results?.map((result) => (
-                <VariableDisplay
-                    key={result.binding.id}
-                    binding={result.binding}
-                    value={result.value}
-                    isError={false}
-                    onChange={noop}
-                    readOnly={true}
+    if (parseError)
+        return (
+            <SectionCard padded={true}>
+                <NonIdealState
+                    icon="bug"
+                    title="Parsing Error"
+                    description={<pre>{parseError}</pre>}
+                    className="my-16"
                 />
-            ))}
+            </SectionCard>
+        );
+
+    return (
+        <SectionCard padded={false} className="my-4 flex flex-col gap-4">
+            <canvas className={output?.type === "render" ? "h-16 w-16" : "hidden"} ref={setCanvas} />
+            {results?.type === "errors"
+                ? results.errors.map((error, idx) => (
+                      <div className="mx-4" key={idx}>
+                          <Callout key={idx} title={error.title} icon={error.icon} intent={error.intent}>
+                              {error.text}
+                          </Callout>
+                      </div>
+                  ))
+                : results?.type === "outputs"
+                ? results.outputs.map((result) => (
+                      <VariableDisplay
+                          key={result.binding.id}
+                          binding={result.binding}
+                          value={result.value}
+                          isError={false}
+                          onChange={noop}
+                          readOnly={true}
+                      />
+                  ))
+                : null}
         </SectionCard>
     );
 };

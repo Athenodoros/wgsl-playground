@@ -200,9 +200,9 @@ export const parseValueForType = (type: TypeInfo, structs: StructInfo[], value: 
             return null;
         }
 
-        if (component === "f32") view.setFloat32(idx * 4, value);
-        if (component === "u32") view.setUint32(idx * 4, value);
-        if (component === "i32") view.setInt32(idx * 4, value);
+        if (component === "f32") view.setFloat32(idx * 4, value, true);
+        if (component === "u32") view.setUint32(idx * 4, value, true);
+        if (component === "i32") view.setInt32(idx * 4, value, true);
     }
 
     return buffer;
@@ -221,13 +221,13 @@ export const parseBufferForType = (type: TypeInfo, structs: StructInfo[], buffer
     for (const idx of range(components.length)) {
         switch (components[idx]) {
             case "f32":
-                values[idx] = view.getFloat32(idx * 4);
+                values[idx] = view.getFloat32(idx * 4, true);
                 break;
             case "u32":
-                values[idx] = view.getUint32(idx * 4);
+                values[idx] = view.getUint32(idx * 4, true);
                 break;
             case "i32":
-                values[idx] = view.getInt32(idx * 4);
+                values[idx] = view.getInt32(idx * 4, true);
                 break;
         }
     }

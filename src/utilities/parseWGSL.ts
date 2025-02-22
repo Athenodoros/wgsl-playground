@@ -45,6 +45,7 @@ export const parseWGSL = (
                 index: bindIdx,
                 name: binding.name,
                 type: binding.type,
+                resourceType: binding.resourceType,
                 writable: binding.access === "write" || binding.access === "read_write",
                 input: input.value,
                 buffer,
@@ -60,7 +61,7 @@ export const parseWGSL = (
         structs: reflect.reflect.structs,
         bindings: bindings as WgslBinding[],
         runnables,
-        selected: runnables[0].id,
+        selected: runnables[0] ?? null,
     };
 };
 

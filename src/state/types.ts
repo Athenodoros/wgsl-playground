@@ -1,4 +1,4 @@
-import { ParseResults, WgslOutput } from "../utilities/types";
+import { ParseResults, Runnable, RunnerResults } from "../utilities/types";
 
 interface AppLoadingState extends ParseResults {
     type: "loading";
@@ -27,7 +27,7 @@ interface AppFinishedState extends ParseResults {
     device: GPUDevice | null;
     canvas: HTMLCanvasElement;
     wgsl: string;
-    results: WgslOutput[];
+    results: RunnerResults;
 }
 
 export type AppState = AppLoadingState | AppFailedParseState | AppRunningState | AppFinishedState;
@@ -37,4 +37,5 @@ export interface AppActions {
     setCanvas: (canvas: HTMLCanvasElement) => void;
     setWGSL: (wgsl: string | undefined) => void;
     setBindingInput: (id: string, input: string, buffer: ArrayBuffer) => void;
+    selectRunnable: (runnable: Runnable) => void;
 }

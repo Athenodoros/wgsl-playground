@@ -33,13 +33,13 @@ const VariableInput: React.FC<{
     return (
         <Editor
             className={isError ? "border-red-500 border-1" : ""}
-            height={value.split("\n").length * 18}
+            height={value.split("\n").length * 18 + 12}
             defaultLanguage="json"
             value={value}
             options={{
                 minimap: { enabled: false },
                 scrollBeyondLastLine: false,
-                scrollbar: { handleMouseWheel: false },
+                scrollbar: { alwaysConsumeMouseWheel: true, vertical: "hidden" },
                 readOnly,
             }}
             onChange={onChange}

@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useAppState } from "../state";
-import { Runnable } from "../utilities/types";
 import { AppNavbar } from "./components/AppNavbar";
 import { BindingsDisplay } from "./components/BindingsDisplay";
 import { MainEditor } from "./components/MainEditor";
@@ -44,24 +43,13 @@ const useInitialisedDevice = () => {
 };
 
 const RightColumn: React.FC = () => {
-    const runnables = useAppState((state) => (state.type === "loading" ? null : state.runnables));
-
-    const [selectedRunnable, setSelectedRunnable] = useState<Runnable | null>(null);
-    useEffect(
-        () =>
-            setSelectedRunnable((current) =>
-                current === null || !runnables?.find((o) => o.id === current.id) ? runnables?.[0] ?? null : current
-            ),
-        [runnables]
-    );
-
     return (
-        <div className="basis-md grow flex flex-col gap-4">
+        <div className="w-2xl flex flex-col gap-4">
             <StructDisplay />
             <BindingsDisplay />
             <RightSection title="Function Runner" icon="flow-end">
-                <RunnableInputs output={selectedRunnable} setOutput={setSelectedRunnable} />
-                <RunnableOutputs output={selectedRunnable} />
+                <RunnableInputs />
+                <RunnableOutputs />
             </RightSection>
         </div>
     );
