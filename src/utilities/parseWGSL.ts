@@ -85,6 +85,7 @@ const getFunctionRunOptions = (reflection: WgslReflect): Runnable[] => {
                 vertex: f.name,
                 fragment: frag.name,
                 vertices: 3,
+                useDepthTexture: true,
             }));
         }
 

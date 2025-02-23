@@ -1,4 +1,12 @@
-import { Button, MenuItem, MenuItemProps, NumericInput, NumericInputProps, SectionCard } from "@blueprintjs/core";
+import {
+    Button,
+    MenuItem,
+    MenuItemProps,
+    NumericInput,
+    NumericInputProps,
+    SectionCard,
+    Switch,
+} from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 import React from "react";
 import { useAppState } from "../../state";
@@ -57,13 +65,24 @@ export const RunnableInputs: React.FC = () => {
                         />
                     </RunnableInput>
                 ) : output?.type === "render" ? (
-                    <RunnableInput title="Vertices" subtext="Count">
-                        <NumericInputWrapper
-                            placeholder="Count"
-                            defaultValue={output.vertices}
-                            onValueChange={(value) => setOutput({ ...output, vertices: value })}
-                        />
-                    </RunnableInput>
+                    <>
+                        <RunnableInput title="Vertices" subtext="Count">
+                            <NumericInputWrapper
+                                placeholder="Count"
+                                defaultValue={output.vertices}
+                                onValueChange={(value) => setOutput({ ...output, vertices: value })}
+                            />
+                        </RunnableInput>
+                        <RunnableInput title="Depth Texture" subtext="depth32float">
+                            <Switch
+                                className="!mb-0"
+                                checked={output.useDepthTexture}
+                                onChange={(e) => setOutput({ ...output, useDepthTexture: e.target.checked })}
+                                alignIndicator="right"
+                                label={output.useDepthTexture ? "Enabled" : "Disabled"}
+                            />
+                        </RunnableInput>
+                    </>
                 ) : null}
             </div>
         </SectionCard>

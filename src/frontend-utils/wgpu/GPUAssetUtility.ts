@@ -83,7 +83,7 @@ export class GPUAssetUtility {
     getCanvasContext(canvas: HTMLCanvasElement): GPUCanvasContext {
         const context = canvas.getContext("webgpu");
         if (!context) throw Error("No GPU context available");
-        context.configure({ device: this.device, format: "bgra8unorm", alphaMode: "opaque" });
+        context.configure({ device: this.device, format: "rgba8unorm", alphaMode: "opaque" });
         return context;
     }
 

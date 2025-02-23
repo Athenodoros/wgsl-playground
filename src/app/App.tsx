@@ -30,6 +30,8 @@ const useInitialisedDevice = () => {
             return;
         }
 
+        let cancelled = false;
+
         navigator.gpu.requestAdapter().then(async (adapter) => {
             if (!adapter) {
                 setDevice(null);
@@ -37,8 +39,14 @@ const useInitialisedDevice = () => {
             }
 
             const device = await adapter.requestDevice();
+
+            if (cancelled) return;
             setDevice(device);
         });
+
+        return () => {
+            cancelled = true;
+        };
     }, [setDevice]);
 };
 

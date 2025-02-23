@@ -34,7 +34,7 @@ export type AppState = AppLoadingState | AppFailedParseState | AppRunningState |
 
 export interface AppActions {
     setDevice: (device: GPUDevice | null) => void;
-    setCanvas: (canvas: HTMLCanvasElement) => void;
+    setCanvas: (canvas: HTMLCanvasElement | null) => void;
     setWGSL: (wgsl: string | undefined) => void;
     setBindingInput: (id: string, input: string, buffer: ArrayBuffer) => void;
     selectRunnable: (runnable: Runnable) => void;

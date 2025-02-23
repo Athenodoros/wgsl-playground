@@ -26,7 +26,11 @@ export interface RunnerResultError {
     icon: IconName;
 }
 export type RunnerResults =
-    | { type: "outputs"; outputs: WgslOutput[] }
+    | {
+          type: "outputs";
+          getTextureValue?: (row: number, column: number) => [number, number, number, number] | null;
+          outputs: WgslOutput[];
+      }
     | { type: "errors"; errors: RunnerResultError[] };
 
 export interface RunnableComputeShader {
@@ -55,6 +59,7 @@ export interface RunnableRender {
     vertex: string;
     fragment: string;
     vertices: number;
+    useDepthTexture: boolean;
 }
 
 export type Runnable = RunnableComputeShader | RunnableRender; // | RunnableFunction | RunnableRenderTriangles;

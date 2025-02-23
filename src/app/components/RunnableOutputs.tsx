@@ -1,18 +1,19 @@
 import { Callout, NonIdealState, SectionCard } from "@blueprintjs/core";
 import { noop } from "../../frontend-utils/general/data";
 import { useAppState } from "../../state";
+import { OutputCanvas } from "./OutputCanvas";
 import { VariableDisplay } from "./VariableDisplay";
 
 export const RunnableOutputs: React.FC = () => {
     const parseError = useAppState((state) => (state.type === "failed-parse" ? state.error : null));
     const output = useAppState((state) => state.selected);
-    const setCanvas = useAppState((state) => state.setCanvas);
     const results = useAppState((state) => (state.type === "finished" ? state.results : null));
     const device = useAppState((state) => state.device);
 
-    if (device === null)
+    if (device === null) {
         return (
             <SectionCard padded={true}>
+                <OutputCanvas hidden={true} />
                 <NonIdealState
                     icon="th-disconnect"
                     title="WebGPU Not Available"
@@ -21,10 +22,12 @@ export const RunnableOutputs: React.FC = () => {
                 />
             </SectionCard>
         );
+    }
 
-    if (parseError)
+    if (parseError) {
         return (
             <SectionCard padded={true}>
+                <OutputCanvas hidden={true} />
                 <NonIdealState
                     icon="bug"
                     title="Parsing Error"
@@ -33,10 +36,11 @@ export const RunnableOutputs: React.FC = () => {
                 />
             </SectionCard>
         );
+    }
 
     return (
         <SectionCard padded={false} className="my-4 flex flex-col gap-4">
-            <canvas className={output?.type === "render" ? "h-16 w-16" : "hidden"} ref={setCanvas} />
+            <OutputCanvas hidden={output?.type !== "render" || (results !== null && results.type !== "outputs")} />
             {results?.type === "errors"
                 ? results.errors.map((error, idx) => (
                       <div className="mx-4" key={idx}>

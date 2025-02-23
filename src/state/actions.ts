@@ -42,7 +42,9 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
             if (result.type === "failed-parse") set({ ...state, ...result, device, canvas: state.canvas }, true);
             else startGPUProcessing({ ...state, ...result, device, canvas: state.canvas });
         },
-        setCanvas: (canvas: HTMLCanvasElement) => {
+        setCanvas: (canvas: HTMLCanvasElement | null) => {
+            if (canvas === null) return;
+
             const state = get();
             if (state.type !== "loading" || state.device === undefined) {
                 set({ ...state, canvas });
