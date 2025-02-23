@@ -1,25 +1,61 @@
-import { Section } from "@blueprintjs/core";
+import { Button, Menu, MenuItem, Popover, Section } from "@blueprintjs/core";
 import { Editor } from "@monaco-editor/react";
+import { useState } from "react";
+import { noop } from "../../frontend-utils/general/data";
 import { useAppState } from "../../state";
-import { INITIAL_APP_STATE } from "../../state/defaults";
+import { DEFAULT_COMPUTE_SHADER, DEFAULT_VERTEX_SHADER, INITIAL_APP_STATE } from "../../state/defaults";
 
 export const MainEditor: React.FC = () => {
+    const wgsl = useAppState((state) => state.wgsl);
     const setWGSL = useAppState((state) => state.setWGSL);
-    // const error = useAppState((state) => (state.type === "failed-parse" ? state.error : null));
+    const [setEditorValue, setSetEditorValue] = useState<(value: string) => void>(noop);
+
+    const setExample = (example: string) => () => {
+        setWGSL(example);
+        setEditorValue(example);
+    };
 
     return (
         <div className="basis-md grow flex flex-col gap-4">
             <Section
                 title="Editor"
                 className="grow shrink flex flex-col"
-                // rightElement={
-                //     <Tag intent={error ? "danger" : "success"} minimal={true} large={true} className="!max-w-96">
-                //         {error ? error : "Parsing Successful"}
-                //     </Tag>
-                // }
+                rightElement={
+                    <Popover
+                        position="bottom"
+                        content={
+                            <Menu>
+                                <MenuItem
+                                    icon="media"
+                                    text="Triangle Vertex Shader"
+                                    onClick={setExample(DEFAULT_VERTEX_SHADER)}
+                                    disabled={wgsl === DEFAULT_VERTEX_SHADER}
+                                />
+                                <MenuItem
+                                    icon="derive-column"
+                                    text="CumSum Compute Shader"
+                                    onClick={setExample(DEFAULT_COMPUTE_SHADER)}
+                                    disabled={wgsl === DEFAULT_COMPUTE_SHADER}
+                                />
+                            </Menu>
+                        }
+                    >
+                        <Button outlined={true} intent="primary" rightIcon="chevron-down">
+                            Load Example
+                        </Button>
+                    </Popover>
+                }
             >
                 <div className="bg-slate-200 p-2 grow shrink">
-                    <Editor defaultLanguage="wgsl" defaultValue={INITIAL_APP_STATE.wgsl} onChange={setWGSL} />
+                    <Editor
+                        defaultLanguage="wgsl"
+                        defaultValue={INITIAL_APP_STATE.wgsl}
+                        onChange={setWGSL}
+                        onMount={(editor) =>
+                            // Extra currying because react calls functions to get the new state value
+                            setSetEditorValue(() => (value: string) => editor.getModel()?.setValue(value))
+                        }
+                    />
                 </div>
             </Section>
         </div>

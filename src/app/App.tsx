@@ -1,3 +1,4 @@
+import { OverlaysProvider } from "@blueprintjs/core";
 import { useEffect } from "react";
 import { useAppState } from "../state";
 import { AppNavbar } from "./components/AppNavbar";
@@ -13,11 +14,13 @@ export const App = () => {
 
     return (
         <div className="h-screen w-screen bg-slate-50 flex flex-col">
-            <AppNavbar />
-            <div className="flex p-4 gap-4 items-stretch h-screen pt-16.5">
-                <MainEditor />
-                <RightColumn />
-            </div>
+            <OverlaysProvider>
+                <AppNavbar />
+                <div className="flex p-4 gap-4 items-stretch h-screen pt-16.5">
+                    <MainEditor />
+                    <RightColumn />
+                </div>
+            </OverlaysProvider>
         </div>
     );
 };
