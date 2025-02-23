@@ -44,12 +44,14 @@ const runRenderShader = async (
 
     const pipeline = device.createRenderPipeline({
         layout: pipelineLayout,
-        depthStencil: {
-            format: "depth32float",
-            depthWriteEnabled: true,
-            depthCompare: "less",
-            stencilFront: { compare: "always", failOp: "keep", depthFailOp: "keep", passOp: "keep" },
-        },
+        depthStencil: runnable.useDepthTexture
+            ? {
+                  format: "depth32float",
+                  depthWriteEnabled: true,
+                  depthCompare: "less",
+                  stencilFront: { compare: "always", failOp: "keep", depthFailOp: "keep", passOp: "keep" },
+              }
+            : undefined,
         vertex: { module, entryPoint: runnable.vertex },
         fragment: { module, entryPoint: runnable.fragment, targets: [{ format: "rgba8unorm" }] },
         primitive: { topology: "triangle-list" },
