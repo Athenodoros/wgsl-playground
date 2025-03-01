@@ -2,7 +2,7 @@ import { Callout, NonIdealState, SectionCard } from "@blueprintjs/core";
 import { noop } from "../../frontend-utils/general/data";
 import { useAppState } from "../../state";
 import { OutputCanvas } from "./OutputCanvas";
-import { VariableDisplay } from "./VariableDisplay";
+import { BindingDisplay, VariableDisplay } from "./VariableDisplay";
 
 export const RunnableOutputs: React.FC = () => {
     const parseError = useAppState((state) => (state.type === "failed-parse" ? state.error : null));
@@ -50,16 +50,33 @@ export const RunnableOutputs: React.FC = () => {
                       </div>
                   ))
                 : results?.type === "outputs"
-                ? results.outputs.map((result) => (
-                      <VariableDisplay
-                          key={result.binding.id}
-                          binding={result.binding}
-                          value={result.value}
-                          isError={false}
-                          onChange={noop}
-                          readOnly={true}
-                      />
-                  ))
+                ? results.bindings
+                      .map((result) => (
+                          <BindingDisplay
+                              key={result.binding.id}
+                              binding={result.binding}
+                              value={result.value}
+                              isError={false}
+                              onChange={noop}
+                              readOnly={true}
+                          />
+                      ))
+                      .concat(
+                          results.returned && output?.type === "function" && output.output
+                              ? [
+                                    <VariableDisplay
+                                        key="function-output"
+                                        title="Function Output"
+                                        subtitle={output.name}
+                                        type={output.output}
+                                        value={results.returned.value}
+                                        isError={false}
+                                        onChange={noop}
+                                        readOnly={true}
+                                    />,
+                                ]
+                              : []
+                      )
                 : null}
         </SectionCard>
     );

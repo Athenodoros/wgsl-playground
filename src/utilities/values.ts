@@ -94,7 +94,7 @@ const getBufferSpec = (type: TypeInfo, structs: StructInfo[]): BufferSpec | null
         ? Number(type.name[3])
         : null;
     if (!columns) {
-        console.log(`Could not get columns for ${type.name}`);
+        console.log(`Unrecognised type: ${type.name}`);
         return null;
     }
 
@@ -123,10 +123,13 @@ const getBufferSpec = (type: TypeInfo, structs: StructInfo[]): BufferSpec | null
 const getArrayLine = (line: BufferComponent[], addComma: boolean) =>
     line.map((c) => ({ f32: "1.0", u32: "1", i32: "1", padding: "null" }[c])).join(", ") + (addComma ? "," : "");
 
-type DefaultValueReturn = { type: "error"; value: string } | { type: "values"; value: string };
+type DefaultValueReturn = { type: "error"; error: string } | { type: "values"; error: string };
 export const getDefaultValue = (type: TypeInfo, structs: StructInfo[]): DefaultValueReturn => {
+    if (type.name === "f16") return { type: "error", error: "f16 not supported, due to limited browser support" };
+    if (type.name === "bool") return { type: "error", error: "bool not supported, due to limited browser support" };
+
     const spec = getBufferSpec(type, structs);
-    if (spec === null) return { type: "error", value: `Failed with type: ${JSON.stringify(type)}` };
+    if (spec === null) return { type: "error", error: `Unknown type: ${type.name}` };
 
     const struct = structs.find((s) => s.name === type.name);
     if (struct) {
@@ -141,7 +144,7 @@ export const getDefaultValue = (type: TypeInfo, structs: StructInfo[]): DefaultV
         });
 
         const value = "[\n" + lines.map((v) => "    " + v).join("\n") + "\n]";
-        return { type: "values", value };
+        return { type: "values", error: value };
     }
 
     if (type.isArray) {
@@ -152,17 +155,17 @@ export const getDefaultValue = (type: TypeInfo, structs: StructInfo[]): DefaultV
                 ? "[ " + lines.map((v) => getArrayLine(v, false)).join(", ") + " ]"
                 : "[\n" + lines.map((v) => "    " + getArrayLine(v, false)).join(",\n") + "\n]";
 
-        return { type: "values", value };
+        return { type: "values", error: value };
     }
 
     if (spec.lines.length === 1) {
         const value = `[ ${getArrayLine(spec.lines[0], false)} ]`;
-        return { type: "values", value };
+        return { type: "values", error: value };
     }
 
     return {
         type: "values",
-        value: `[${spec.lines.map((c) => "    " + getArrayLine(c, false)).join(",\n")}]`,
+        error: `[${spec.lines.map((c) => "    " + getArrayLine(c, false)).join(",\n")}]`,
     };
 };
 

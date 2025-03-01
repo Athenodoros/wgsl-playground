@@ -4,14 +4,14 @@ import { useAppState } from "../../state";
 import { WgslBinding } from "../../utilities/types";
 import { parseValueForType } from "../../utilities/values";
 import { RightSection } from "./RightSection";
-import { VariableDisplay } from "./VariableDisplay";
+import { BindingDisplay } from "./VariableDisplay";
 
 export const BindingsDisplay: React.FC = () => {
     const bindings = useAppState((state) => state.bindings);
 
     return (
         <RightSection
-            title={`Binding Values (${bindings.length})`}
+            title={`Resource Binding Values (${bindings.length})`}
             icon="property"
             disabled={bindings.length === 0}
             startClosed={true}
@@ -53,7 +53,7 @@ const BindingDisplay: React.FC<{ binding: WgslBinding }> = ({ binding }) => {
     );
 
     return (
-        <VariableDisplay
+        <BindingDisplay
             binding={binding}
             value={localValue}
             isError={error}

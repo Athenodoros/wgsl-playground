@@ -1,11 +1,11 @@
 import { WgslReflect } from "wgsl_reflect";
-import { ParseResults, Runnable, WgslBinding } from "./types";
+import { ParseResults, Runnable, RunnableFunction, WgslBinding } from "./types";
 import { getDefaultValue, parseValueForType } from "./values";
 
-const getReflectionOrError = (wgsl: string) => {
+export const getReflectionOrError = (wgsl: string, addToWindow: boolean = false) => {
     try {
         const reflect = new WgslReflect(wgsl);
-        Object.assign(window, { reflect });
+        if (addToWindow) Object.assign(window, { reflect });
         return { type: "reflection" as const, reflect };
     } catch (e) {
         if ("message" in (e as Error) && typeof (e as Error).message === "string") {
@@ -18,7 +18,7 @@ const getReflectionOrError = (wgsl: string) => {
 export const parseWGSL = (
     wgsl: string
 ): ({ type: "running" } & ParseResults) | { type: "failed-parse"; error: string } => {
-    const reflect = getReflectionOrError(wgsl);
+    const reflect = getReflectionOrError(wgsl, true);
     if (reflect.type === "error") return { type: "failed-parse", error: reflect.error };
 
     const bindGroups = reflect.reflect.getBindGroups();
@@ -29,11 +29,11 @@ export const parseWGSL = (
 
             const input = getDefaultValue(binding.type, reflect.reflect.structs);
             if (input.type === "error") {
-                error = input.value;
+                error = input.error;
                 return null;
             }
 
-            const buffer = parseValueForType(binding.type, reflect.reflect.structs, input.value);
+            const buffer = parseValueForType(binding.type, reflect.reflect.structs, input.error);
             if (buffer === null) {
                 error = `Could not parse buffer for binding ${id}`;
                 return null;
@@ -47,7 +47,7 @@ export const parseWGSL = (
                 type: binding.type,
                 resourceType: binding.resourceType,
                 writable: binding.access === "write" || binding.access === "read_write",
-                input: input.value,
+                input: input.error,
                 buffer,
             };
         })
@@ -69,9 +69,31 @@ const getFunctionRunOptions = (reflection: WgslReflect): Runnable[] => {
     const fragments = reflection.functions.filter((f) => f.stage === "fragment");
 
     return reflection.functions.flatMap((f): Runnable[] => {
-        // if (f.stage === null) {
-        //     return [{ id: `function-${f.name}`, type: "function", name: f.name }];
-        // }
+        if (f.stage === null) {
+            const args = f.arguments.map((arg) => {
+                const value = getDefaultValue(arg.type, reflection.structs);
+                if (value.type === "error") return null;
+
+                const buffer = parseValueForType(arg.type, reflection.structs, value.error);
+                if (buffer === null) return null;
+
+                return { name: arg.name, type: arg.type, input: value.error, buffer };
+            });
+
+            if (args.some((a) => a === null)) return [];
+
+            return [
+                {
+                    id: `function-${f.name}`,
+                    type: "function",
+                    name: f.name,
+                    arguments: args as RunnableFunction["arguments"],
+                    output: f.returnType,
+                    startLine: f.startLine,
+                    endLine: f.endLine,
+                },
+            ];
+        }
 
         if (f.stage === "compute") {
             return [{ id: `compute-${f.name}`, type: "compute", name: f.name, threads: [1, 1, 1] }];

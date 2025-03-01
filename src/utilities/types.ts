@@ -14,8 +14,14 @@ export interface WgslBinding {
     buffer: ArrayBuffer;
 }
 
-export interface WgslOutput {
+export interface BindingOutput {
     binding: WgslBinding;
+    value: string;
+}
+
+export interface FunctionOutput {
+    name: string;
+    type: TypeInfo;
     value: string;
 }
 
@@ -29,7 +35,8 @@ export type RunnerResults =
     | {
           type: "outputs";
           getTextureValue?: (row: number, column: number) => [number, number, number, number] | null;
-          outputs: WgslOutput[];
+          bindings: BindingOutput[];
+          returned: FunctionOutput | null;
       }
     | { type: "errors"; errors: RunnerResultError[] };
 
@@ -40,11 +47,20 @@ export interface RunnableComputeShader {
     threads: [number, number, number];
 }
 
-// interface RunnableFunction {
-//     type: "function";
-//     name: string;
-//     arguments: any[];
-// }
+export interface RunnableFunction {
+    id: string;
+    type: "function";
+    name: string;
+    startLine: number;
+    endLine: number;
+    arguments: {
+        name: string;
+        type: TypeInfo;
+        input: string;
+        buffer: ArrayBuffer;
+    }[];
+    output: TypeInfo | null;
+}
 
 // interface RunnableRenderTriangles {
 //     id: string;
@@ -62,7 +78,7 @@ export interface RunnableRender {
     useDepthTexture: boolean;
 }
 
-export type Runnable = RunnableComputeShader | RunnableRender; // | RunnableFunction | RunnableRenderTriangles;
+export type Runnable = RunnableComputeShader | RunnableRender | RunnableFunction;
 
 export interface ParseResults {
     selected: Runnable | null;

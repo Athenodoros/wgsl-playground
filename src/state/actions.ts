@@ -1,8 +1,8 @@
 import { StoreApi } from "zustand";
-import { assertNever, noop } from "../frontend-utils/general/data";
+import { assertNever, noop, range } from "../frontend-utils/general/data";
 import { parseWGSL } from "../utilities/parseWGSL";
 import { runWGSLFunction } from "../utilities/runner";
-import { RunnableComputeShader, RunnableRender } from "../utilities/types";
+import { RunnableComputeShader, RunnableFunction, RunnableRender } from "../utilities/types";
 import { getDefaultValue } from "../utilities/values";
 import { AppActions, AppRunningState, AppState } from "./types";
 
@@ -82,7 +82,7 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
                 if (
                     newDefault.type === "values" &&
                     oldDefault.type === "values" &&
-                    newDefault.value === oldDefault.value
+                    newDefault.error === oldDefault.error
                 ) {
                     binding.input = oldBinding.input;
                     binding.buffer = oldBinding.buffer;
@@ -94,7 +94,26 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
                     result.selected.threads = (state.selected as RunnableComputeShader).threads;
                 else if (result.selected.type === "render")
                     result.selected.fragment = (state.selected as RunnableRender).fragment;
-                else assertNever(result.selected);
+                else if (result.selected.type === "function") {
+                    for (const idx of range(result.selected.arguments.length)) {
+                        const arg = result.selected.arguments[idx];
+                        const oldArg =
+                            (state.selected as RunnableFunction).arguments.find((a) => a.name === arg.name) ??
+                            (state.selected as RunnableFunction).arguments[idx];
+                        if (oldArg === undefined) continue;
+
+                        const newDefault = getDefaultValue(arg.type, result.structs);
+                        const oldDefault = getDefaultValue(oldArg.type, state.structs);
+                        if (
+                            newDefault.type === "values" &&
+                            oldDefault.type === "values" &&
+                            newDefault.error === oldDefault.error
+                        ) {
+                            arg.input = oldArg.input;
+                            arg.buffer = oldArg.buffer;
+                        }
+                    }
+                } else assertNever(result.selected);
             }
 
             startGPUProcessing({ ...state, ...result, wgsl });

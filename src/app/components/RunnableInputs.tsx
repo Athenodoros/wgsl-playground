@@ -7,10 +7,11 @@ import {
     SectionCard,
     Switch,
 } from "@blueprintjs/core";
-import { Select } from "@blueprintjs/select";
+import { ItemRenderer, Select } from "@blueprintjs/select";
 import React from "react";
 import { useAppState } from "../../state";
 import { Runnable } from "../../utilities/types";
+import { getTypeDisplay } from "../../utilities/values";
 
 export const RunnableInputs: React.FC = () => {
     const output = useAppState((state) => state.selected);
@@ -83,6 +84,14 @@ export const RunnableInputs: React.FC = () => {
                             />
                         </RunnableInput>
                     </>
+                ) : output?.type === "function" ? (
+                    <>
+                        {output.arguments.map((arg) => (
+                            <RunnableInput key={arg.name} title={arg.name} subtext={getTypeDisplay(arg.type)}>
+                                Hello
+                            </RunnableInput>
+                        ))}
+                    </>
                 ) : null}
             </div>
         </SectionCard>
@@ -112,8 +121,8 @@ const NumericInputWrapper: React.FC<NumericInputProps> = ({ ...props }) => (
     />
 );
 
-const renderCallOption = (runnable: Runnable) => (
-    <MenuItem key={runnable.id} {...getCallOptionProps(runnable)} /> // disabled={runnable.type === "render-triangles"} />
+const renderCallOption: ItemRenderer<Runnable> = (runnable, { handleClick }) => (
+    <MenuItem key={runnable.id} {...getCallOptionProps(runnable)} onClick={handleClick} />
 );
 
 const getCallOptionProps = (runnable: Runnable | null): Pick<MenuItemProps, "icon" | "text"> => {
@@ -128,7 +137,7 @@ const getCallOptionProps = (runnable: Runnable | null): Pick<MenuItemProps, "ico
             return { icon: "media", text: `${runnable.vertex} + ${runnable.fragment}` };
         case "compute":
             return { icon: "derive-column", text: `${runnable.name}` };
-        // case "function":
-        //     return { icon: "variable", text: `${option.name}` };
+        case "function":
+            return { icon: "variable", text: `${runnable.name}` };
     }
 };

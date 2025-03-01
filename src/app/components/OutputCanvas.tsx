@@ -59,7 +59,7 @@ export const OutputCanvas: React.FC<{ hidden?: boolean }> = ({ hidden }) => {
             </div>
             <div className="relative border-solid border-2 border-slate-300">
                 <canvas
-                    className={`h-[${CANVAS_HEIGHT}px] w-[${CANVAS_WIDTH}px]`}
+                    className={`h-[360px] w-[640px]`} // Needs to be explicit so tailwind includes the classes - should be in sync with variables above
                     width={CANVAS_WIDTH_PX}
                     height={CANVAS_HEIGHT_PX}
                     ref={setCanvas}
