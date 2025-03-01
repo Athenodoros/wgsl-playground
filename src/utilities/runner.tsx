@@ -333,13 +333,13 @@ fn ${STUB_FUNCTION_RUNNER_NAME}() {
 
     const inputBindingValue = getDefaultValue(inputBindingType, reflect.reflect.structs);
     if (inputBindingValue.type === "error") return inputBindingValue;
-    const inputBindingBuffer = parseValueForType(inputBindingType, reflect.reflect.structs, inputBindingValue.error);
+    const inputBindingBuffer = parseValueForType(inputBindingType, reflect.reflect.structs, inputBindingValue.value);
     if (inputBindingBuffer === null) return { type: "error", error: "Could not parse default value for input binding" };
 
     const outputBindingType = runnable.output ?? new TypeInfo("i32", null);
     const outputBindingValue = getDefaultValue(outputBindingType, reflect.reflect.structs);
     if (outputBindingValue.type === "error") return outputBindingValue;
-    const outputBindingBuffer = parseValueForType(outputBindingType, reflect.reflect.structs, outputBindingValue.error);
+    const outputBindingBuffer = parseValueForType(outputBindingType, reflect.reflect.structs, outputBindingValue.value);
     if (outputBindingBuffer === null)
         return { type: "error", error: "Could not parse default value for output binding" };
 
@@ -352,7 +352,7 @@ fn ${STUB_FUNCTION_RUNNER_NAME}() {
             index: 0,
             name: "inputs",
             type: inputBindingType,
-            input: inputBindingValue.error,
+            input: inputBindingValue.value,
             buffer: inputBindingBuffer,
         },
         {
@@ -363,7 +363,7 @@ fn ${STUB_FUNCTION_RUNNER_NAME}() {
             index: 1,
             name: "output",
             type: outputBindingType,
-            input: outputBindingValue.error,
+            input: outputBindingValue.value,
             buffer: outputBindingBuffer,
         },
     ];

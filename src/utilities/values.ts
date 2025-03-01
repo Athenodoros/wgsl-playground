@@ -38,7 +38,7 @@ const getBufferSpec = (type: TypeInfo, structs: StructInfo[]): BufferSpec | null
         for (const idx of range(lists.length)) {
             const [member, list] = lists[idx];
             if (list === null) {
-                console.log(`Could not get struct spec for ${member.name}: ${JSON.stringify(member.type)}`);
+                // console.log(`Could not get struct spec for ${member.name}: ${JSON.stringify(member.type)}`);
                 return null;
             }
             const line = list.lines.flat();
@@ -59,7 +59,7 @@ const getBufferSpec = (type: TypeInfo, structs: StructInfo[]): BufferSpec | null
 
         const spec = getBufferSpec(arrayType.format, structs);
         if (spec === null) {
-            console.log(`Could not get array spec for ${JSON.stringify(arrayType)}`);
+            // console.log(`Could not get array spec for ${JSON.stringify(arrayType)}`);
             return null;
         }
         const values = spec.lines.flat();
@@ -75,10 +75,10 @@ const getBufferSpec = (type: TypeInfo, structs: StructInfo[]): BufferSpec | null
 
     switch (type.name) {
         case "bool":
-            console.log("bool not supported due to wgsl-reflect not supporting it for IO");
+            // console.log("bool not supported due to wgsl-reflect not supporting it for IO");
             return null;
         case "f16":
-            console.log("f16 not supported due to most browsers not handling Float16Arrays yet");
+            // console.log("f16 not supported due to most browsers not handling Float16Arrays yet");
             return null;
         case "f32":
             return { lines: [["f32"]], repeat: false };
@@ -94,13 +94,13 @@ const getBufferSpec = (type: TypeInfo, structs: StructInfo[]): BufferSpec | null
         ? Number(type.name[3])
         : null;
     if (!columns) {
-        console.log(`Unrecognised type: ${type.name}`);
+        // console.log(`Unrecognised type: ${type.name}`);
         return null;
     }
 
     const rows = type.name.startsWith("mat") ? Number(type.name[5]) : 1;
     if (!rows) {
-        console.log(`Could not get rows for ${type.name}`);
+        // console.log(`Could not get rows for ${type.name}`);
         return null;
     }
 
@@ -113,7 +113,7 @@ const getBufferSpec = (type: TypeInfo, structs: StructInfo[]): BufferSpec | null
         (type as TemplateInfo).format?.name ??
         null;
     if (!rows || !columns || !rawType) {
-        console.log(`Could not get dimensions or type for ${type.name}: ${rows} ${columns} ${rawType}`);
+        // console.log(`Could not get dimensions or type for ${type.name}: ${rows} ${columns} ${rawType}`);
         return null;
     }
 
@@ -123,7 +123,7 @@ const getBufferSpec = (type: TypeInfo, structs: StructInfo[]): BufferSpec | null
 const getArrayLine = (line: BufferComponent[], addComma: boolean) =>
     line.map((c) => ({ f32: "1.0", u32: "1", i32: "1", padding: "null" }[c])).join(", ") + (addComma ? "," : "");
 
-type DefaultValueReturn = { type: "error"; error: string } | { type: "values"; error: string };
+type DefaultValueReturn = { type: "error"; error: string } | { type: "values"; value: string };
 export const getDefaultValue = (type: TypeInfo, structs: StructInfo[]): DefaultValueReturn => {
     if (type.name === "f16") return { type: "error", error: "f16 not supported, due to limited browser support" };
     if (type.name === "bool") return { type: "error", error: "bool not supported, due to limited browser support" };
@@ -144,7 +144,7 @@ export const getDefaultValue = (type: TypeInfo, structs: StructInfo[]): DefaultV
         });
 
         const value = "[\n" + lines.map((v) => "    " + v).join("\n") + "\n]";
-        return { type: "values", error: value };
+        return { type: "values", value: value };
     }
 
     if (type.isArray) {
@@ -155,37 +155,28 @@ export const getDefaultValue = (type: TypeInfo, structs: StructInfo[]): DefaultV
                 ? "[ " + lines.map((v) => getArrayLine(v, false)).join(", ") + " ]"
                 : "[\n" + lines.map((v) => "    " + getArrayLine(v, false)).join(",\n") + "\n]";
 
-        return { type: "values", error: value };
+        return { type: "values", value: value };
     }
 
     if (spec.lines.length === 1) {
-        const value = `[ ${getArrayLine(spec.lines[0], false)} ]`;
-        return { type: "values", error: value };
+        const line = getArrayLine(spec.lines[0], false);
+        return { type: "values", value: spec.lines[0].length === 1 ? line : `[ ${line} ]` };
     }
 
     return {
         type: "values",
-        error: `[${spec.lines.map((c) => "    " + getArrayLine(c, false)).join(",\n")}]`,
+        value: `[${spec.lines.map((c) => "    " + getArrayLine(c, false)).join(",\n")}]`,
     };
 };
 
-const parseMaybeJSONList = (value: string): unknown[] | null => {
-    try {
-        const values = JSON.parse(value.replace(/\/\/[^\n]*\n/g, "\n"));
-        return Array.isArray(values) ? values : null;
-    } catch {
-        return null;
-    }
-};
-
 export const parseValueForType = (type: TypeInfo, structs: StructInfo[], value: string): ArrayBuffer | null => {
-    const rawValues = parseMaybeJSONList(value);
-    if (rawValues === null || !Array.isArray(rawValues) || rawValues.some((v) => typeof v !== "number" && v !== null))
-        return null;
-    const values = rawValues as (number | null)[];
-
     const spec = getBufferSpec(type, structs);
     if (spec === null) return null;
+
+    const rawValues = JSON.parse(value.replace(/\/\/[^\n]*\n/g, "\n"));
+    const values: (number | null)[] = spec.lines.length === 1 && spec.lines[0].length === 1 ? [rawValues] : rawValues;
+
+    if (!Array.isArray(values) || values.some((v) => typeof v !== "number" && v !== null)) return null;
 
     const components = spec.repeat ? repeat(spec.lines[0], values.length / spec.lines[0].length) : spec.lines.flat();
     if (components.length !== values.length) return null;
@@ -199,7 +190,7 @@ export const parseValueForType = (type: TypeInfo, structs: StructInfo[], value: 
         if (value === null) {
             if (component === "padding") continue;
 
-            console.log(`Could not parse value for ${JSON.stringify(type)}: unexpected null at index ${idx}`);
+            // console.log(`Could not parse value for ${JSON.stringify(type)}: unexpected null at index ${idx}`);
             return null;
         }
 
@@ -235,5 +226,5 @@ export const parseBufferForType = (type: TypeInfo, structs: StructInfo[], buffer
         }
     }
 
-    return JSON.stringify(values);
+    return JSON.stringify(values.length === 1 ? values[0] : values);
 };

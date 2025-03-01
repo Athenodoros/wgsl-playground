@@ -29,11 +29,11 @@ export const parseWGSL = (
 
             const input = getDefaultValue(binding.type, reflect.reflect.structs);
             if (input.type === "error") {
-                error = input.error;
+                error = input.value;
                 return null;
             }
 
-            const buffer = parseValueForType(binding.type, reflect.reflect.structs, input.error);
+            const buffer = parseValueForType(binding.type, reflect.reflect.structs, input.value);
             if (buffer === null) {
                 error = `Could not parse buffer for binding ${id}`;
                 return null;
@@ -47,7 +47,7 @@ export const parseWGSL = (
                 type: binding.type,
                 resourceType: binding.resourceType,
                 writable: binding.access === "write" || binding.access === "read_write",
-                input: input.error,
+                input: input.value,
                 buffer,
             };
         })
@@ -74,10 +74,10 @@ const getFunctionRunOptions = (reflection: WgslReflect): Runnable[] => {
                 const value = getDefaultValue(arg.type, reflection.structs);
                 if (value.type === "error") return null;
 
-                const buffer = parseValueForType(arg.type, reflection.structs, value.error);
+                const buffer = parseValueForType(arg.type, reflection.structs, value.value);
                 if (buffer === null) return null;
 
-                return { name: arg.name, type: arg.type, input: value.error, buffer };
+                return { name: arg.name, type: arg.type, input: value.value, buffer };
             });
 
             if (args.some((a) => a === null)) return [];

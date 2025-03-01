@@ -82,7 +82,7 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
                 if (
                     newDefault.type === "values" &&
                     oldDefault.type === "values" &&
-                    newDefault.error === oldDefault.error
+                    newDefault.value === oldDefault.value
                 ) {
                     binding.input = oldBinding.input;
                     binding.buffer = oldBinding.buffer;
@@ -107,7 +107,7 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
                         if (
                             newDefault.type === "values" &&
                             oldDefault.type === "values" &&
-                            newDefault.error === oldDefault.error
+                            newDefault.value === oldDefault.value
                         ) {
                             arg.input = oldArg.input;
                             arg.buffer = oldArg.buffer;
