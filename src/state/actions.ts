@@ -89,32 +89,44 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
                 }
             }
 
-            if (result.selected && result.selected.type === state.selected?.type) {
-                if (result.selected.type === "compute")
-                    result.selected.threads = (state.selected as RunnableComputeShader).threads;
-                else if (result.selected.type === "render")
-                    result.selected.fragment = (state.selected as RunnableRender).fragment;
-                else if (result.selected.type === "function") {
-                    for (const idx of range(result.selected.arguments.length)) {
-                        const arg = result.selected.arguments[idx];
-                        const oldArg =
-                            (state.selected as RunnableFunction).arguments.find((a) => a.name === arg.name) ??
-                            (state.selected as RunnableFunction).arguments[idx];
-                        if (oldArg === undefined) continue;
+            result.selected =
+                result.runnables.find((r) => {
+                    if (r.type === "compute" && state.selected?.type === "compute")
+                        return r.name === state.selected.name;
+                    if (r.type === "render" && state.selected?.type === "render")
+                        return r.fragment === state.selected.fragment && r.vertex === state.selected.vertex;
+                    if (r.type === "function" && state.selected?.type === "function")
+                        return r.name === state.selected.name;
+                }) ??
+                result.runnables[0] ??
+                null;
 
-                        const newDefault = getDefaultValue(arg.type, result.structs);
-                        const oldDefault = getDefaultValue(oldArg.type, state.structs);
-                        if (
-                            newDefault.type === "values" &&
-                            oldDefault.type === "values" &&
-                            newDefault.value === oldDefault.value
-                        ) {
-                            arg.input = oldArg.input;
-                            arg.buffer = oldArg.buffer;
-                        }
+            if (result.selected.type === "compute") {
+                if (state.selected?.type === "compute")
+                    result.selected.threads = (state.selected as RunnableComputeShader).threads;
+            } else if (result.selected.type === "render") {
+                if (state.selected?.type === "render")
+                    result.selected.fragment = (state.selected as RunnableRender).fragment;
+            } else if (result.selected.type === "function") {
+                for (const idx of range(result.selected.arguments.length)) {
+                    const arg = result.selected.arguments[idx];
+                    const oldArg =
+                        (state.selected as RunnableFunction).arguments.find((a) => a.name === arg.name) ??
+                        (state.selected as RunnableFunction).arguments[idx];
+                    if (oldArg === undefined) continue;
+
+                    const newDefault = getDefaultValue(arg.type, result.structs);
+                    const oldDefault = getDefaultValue(oldArg.type, state.structs);
+                    if (
+                        newDefault.type === "values" &&
+                        oldDefault.type === "values" &&
+                        newDefault.value === oldDefault.value
+                    ) {
+                        arg.input = oldArg.input;
+                        arg.buffer = oldArg.buffer;
                     }
-                } else assertNever(result.selected);
-            }
+                }
+            } else assertNever(result.selected);
 
             startGPUProcessing({ ...state, ...result, wgsl });
         },
