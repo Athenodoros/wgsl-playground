@@ -40,7 +40,7 @@ export const MainEditor: React.FC = () => {
                             </Menu>
                         }
                     >
-                        <Button outlined={true} intent="primary" rightIcon="chevron-down">
+                        <Button variant="outlined" intent="primary" endIcon="chevron-down">
                             Load Example
                         </Button>
                     </Popover>

@@ -32,10 +32,10 @@ export const RunnableInputs: React.FC = () => {
                         >
                             <Button
                                 {...getCallOptionProps(output)}
-                                outlined={true}
+                                variant="outlined"
                                 intent="primary"
                                 // className="!min-w-2xs [&>.bp5-button-text]:!grow"
-                                rightIcon="chevron-down"
+                                endIcon="chevron-down"
                                 disabled={options.length === 0}
                             />
                         </Select>
@@ -79,7 +79,7 @@ export const RunnableInputs: React.FC = () => {
                                 className="!mb-0"
                                 checked={output.useDepthTexture}
                                 onChange={(e) => setOutput({ ...output, useDepthTexture: e.target.checked })}
-                                alignIndicator="right"
+                                alignIndicator="end"
                                 label={output.useDepthTexture ? "Enabled" : "Disabled"}
                             />
                         </RunnableInput>

@@ -10,7 +10,7 @@ export const AppNavbar: React.FC = () => (
                 icon="share"
                 text="WGSL Spec"
                 href="https://www.w3.org/TR/WGSL/"
-                outlined={true}
+                variant="outlined"
                 target="_blank"
             />
         </Navbar.Group>
