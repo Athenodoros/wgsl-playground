@@ -1,5 +1,5 @@
 import { StoreApi } from "zustand";
-import { assertNever, noop, range } from "../frontend-utils/general/data";
+import { assertNever, noop, range } from "../utilities/data";
 import { parseWGSL } from "../utilities/parseWGSL";
 import { runWGSLFunction } from "../utilities/runWGSLFunction";
 import { ParseResults, RunnableComputeShader, RunnableFunction, RunnableRender } from "../utilities/types";

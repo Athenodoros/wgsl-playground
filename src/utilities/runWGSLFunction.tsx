@@ -1,5 +1,5 @@
 import { ResourceType } from "wgsl_reflect";
-import { assertNever, range, uniq } from "../frontend-utils/general/data";
+import { assertNever, range, uniq } from "./data";
 import { getReflectionOrError } from "./parseWGSL";
 import {
     BindingOutput,

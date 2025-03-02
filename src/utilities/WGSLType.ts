@@ -1,5 +1,5 @@
 import { ArrayInfo, StructInfo, TemplateInfo, TypeInfo } from "wgsl_reflect";
-import { range, repeat } from "../frontend-utils/general/data";
+import { range, repeat } from "./data";
 import { WgslBinding } from "./types";
 
 export class WGSLType {

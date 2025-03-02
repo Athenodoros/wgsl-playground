@@ -3,9 +3,9 @@ import { Editor } from "@monaco-editor/react";
 import { useState } from "react";
 import defaultComputeShader from "../../examples/default_compute_shader.wgsl";
 import defaultVertexShader from "../../examples/default_vertex_shader.wgsl";
-import { noop } from "../../frontend-utils/general/data";
 import { useAppState } from "../../state";
 import { INITIAL_APP_STATE } from "../../state/defaults";
+import { noop } from "../../utilities/data";
 
 export const WGSLEditor: React.FC = () => {
     const wgsl = useAppState((state) => state.wgsl);
