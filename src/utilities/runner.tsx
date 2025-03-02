@@ -12,7 +12,7 @@ import {
     RunnerResults,
     WgslBinding,
 } from "./types";
-import { getDefaultValueForType, parseBufferForType, parseValueForType } from "./values";
+import { getDefaultValueForType, parseBufferForType, parseValueForType, parseValueForTypeToList } from "./values";
 
 const STUB_FUNCTION_RUNNER_OUTPUT_BINDING_ID = "stub_function_runner_output";
 const STUB_FUNCTION_RUNNER_NAME = "_wgsl_playground_function_runner__";
@@ -331,7 +331,16 @@ fn ${STUB_FUNCTION_RUNNER_NAME}() {
     const inputBindingType = reflect.reflect.structs.find((s) => s.name === "WGSLPlaygroundFunctionInputsStruct");
     if (inputBindingType === undefined) return { type: "error", error: "Could not find input binding type" };
 
-    const inputBindingValue = getDefaultValueForType(inputBindingType, reflect.reflect.structs);
+    const rawResults = runnable.arguments.map(
+        (arg) => parseValueForTypeToList(arg.type, reflect.reflect.structs, arg.input)[0]
+    );
+    if (rawResults.some((r) => r === null))
+        return { type: "error", error: "Could not map default values for input bindings" };
+    const results = rawResults.flatMap((r) => r).filter((r) => r !== null);
+    let resultIndex = 0;
+    const getDefaultValue = () => results[resultIndex++] ?? -1;
+
+    const inputBindingValue = getDefaultValueForType(inputBindingType, reflect.reflect.structs, getDefaultValue);
     if (inputBindingValue.type === "error") return inputBindingValue;
     const inputBindingBuffer = parseValueForType(inputBindingType, reflect.reflect.structs, inputBindingValue.value);
     if (inputBindingBuffer === null) return { type: "error", error: "Could not parse default value for input binding" };

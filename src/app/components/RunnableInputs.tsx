@@ -1,14 +1,16 @@
 import { Button, MenuItem, MenuItemProps, NumericInput, NumericInputProps, SectionCard } from "@blueprintjs/core";
 import { ItemRenderer, Select } from "@blueprintjs/select";
-import React from "react";
+import React, { useCallback } from "react";
+import { StructInfo } from "wgsl_reflect";
 import { useAppState } from "../../state";
-import { Runnable } from "../../utilities/types";
-import { getTypeDisplay } from "../../utilities/values";
+import { Runnable, RunnableFunctionArgument } from "../../utilities/types";
+import { useVariableDisplayProps, VariableDisplay } from "./VariableDisplay";
 
 export const RunnableInputs: React.FC = () => {
     const output = useAppState((state) => state.selected);
     const setOutput = useAppState((state) => state.selectRunnable);
     const options = useAppState((state) => state.runnables);
+    const structs = useAppState((state) => state.structs);
 
     return (
         <SectionCard padded={true}>
@@ -79,14 +81,26 @@ export const RunnableInputs: React.FC = () => {
                 ) : output?.type === "function" ? (
                     <>
                         {output.arguments.map((arg) => (
-                            <RunnableInput key={arg.name} title={arg.name} subtext={getTypeDisplay(arg.type)}>
-                                Hello
-                            </RunnableInput>
+                            <FunnableInputDisplay key={arg.name} arg={arg} structs={structs} />
                         ))}
                     </>
                 ) : null}
             </div>
         </SectionCard>
+    );
+};
+
+const FunnableInputDisplay: React.FC<{ arg: RunnableFunctionArgument; structs: StructInfo[] }> = ({ arg, structs }) => {
+    const setRunnableInput = useAppState((state) => state.setRunnableInput);
+    const onUpdate = useCallback(
+        (value: string, buffer: ArrayBuffer) => setRunnableInput(arg.name, value, buffer),
+        [arg.name, setRunnableInput]
+    );
+
+    const props = useVariableDisplayProps(arg.input, onUpdate, arg.type, structs);
+
+    return (
+        <VariableDisplay title={arg.name} subtitle="function argument" type={arg.type} {...props} readOnly={false} />
     );
 };
 

@@ -123,14 +123,13 @@ const getBufferSpec = (type: TypeInfo, structs: StructInfo[]): BufferSpec | null
 
 const getArrayLine = (line: BufferComponent[], addComma: boolean, getDefaultValue: () => number) =>
     line
-        .map(
-            (c) =>
-                ({
-                    f32: getDefaultValue().toFixed(1),
-                    u32: getDefaultValue().toFixed(0),
-                    i32: getDefaultValue().toFixed(0),
-                    padding: "null",
-                }[c])
+        .map((c) =>
+            ({
+                f32: () => getDefaultValue().toFixed(1),
+                u32: () => getDefaultValue().toFixed(0),
+                i32: () => getDefaultValue().toFixed(0),
+                padding: () => "null",
+            }[c]())
         )
         .join(", ") + (addComma ? "," : "");
 
@@ -248,15 +247,27 @@ export const getDefaultValue = (
     return getDefaultValueForType(binding.type, structs, spec ?? (() => 1));
 };
 
-export const parseValueForType = (type: TypeInfo, structs: StructInfo[], value: string): ArrayBuffer | null => {
+export const parseValueForTypeToList = (type: TypeInfo, structs: StructInfo[], value: string) => {
     const spec = getBufferSpec(type, structs);
-    if (spec === null) return null;
+    if (spec === null) return [null, null];
 
-    const rawValues = JSON.parse(value.replace(/\/\/[^\n]*\n/g, "\n"));
-    const values: (number | null)[] =
-        !spec.repeat && spec.lines.length === 1 && spec.lines[0].length === 1 ? [rawValues] : rawValues;
+    try {
+        const rawValues = JSON.parse(value.replace(/\/\/[^\n]*\n/g, "\n"));
+        const values: (number | null)[] =
+            !spec.repeat && spec.lines.length === 1 && spec.lines[0].length === 1 ? [rawValues] : rawValues;
 
-    if (!Array.isArray(values) || values.some((v) => typeof v !== "number" && v !== null)) return null;
+        if (!Array.isArray(values) || values.some((v) => typeof v !== "number" && v !== null)) return [null, null];
+
+        return [values, spec] as [(number | null)[], BufferSpec];
+    } catch {
+        // console.warn(e);
+        return [null, null];
+    }
+};
+
+export const parseValueForType = (type: TypeInfo, structs: StructInfo[], value: string): ArrayBuffer | null => {
+    const [values, spec] = parseValueForTypeToList(type, structs, value);
+    if (spec === null || values === null) return null;
 
     const components = spec.repeat ? repeat(spec.lines[0], values.length / spec.lines[0].length) : spec.lines.flat();
     if (components.length !== values.length) return null;
@@ -306,5 +317,5 @@ export const parseBufferForType = (type: TypeInfo, structs: StructInfo[], buffer
         }
     }
 
-    return JSON.stringify(values.length === 1 ? values[0] : values);
+    return JSON.stringify(values.length === 1 ? values[0] : values, undefined, "\n").replace(/\n+/g, " ");
 };

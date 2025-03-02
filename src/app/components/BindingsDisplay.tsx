@@ -1,10 +1,9 @@
 import { SectionCard } from "@blueprintjs/core";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback } from "react";
 import { useAppState } from "../../state";
 import { WgslBinding } from "../../utilities/types";
-import { parseValueForType } from "../../utilities/values";
 import { RightSection } from "./RightSection";
-import { BindingDisplay } from "./VariableDisplay";
+import { BindingDisplay, useVariableDisplayProps } from "./VariableDisplay";
 
 export const BindingsDisplay: React.FC = () => {
     const bindings = useAppState((state) => state.bindings);
@@ -32,33 +31,12 @@ const InnerBindingDisplay: React.FC<{ binding: WgslBinding }> = ({ binding }) =>
     const setBindingInput = useAppState((state) => state.setBindingInput);
     const structs = useAppState((state) => state.structs);
 
-    const [localValue, setLocalValue] = useState(binding.input);
-    useEffect(() => setLocalValue(binding.input), [binding.input]);
-    const [error, setError] = useState(false);
-
     const handleChange = useCallback(
-        (value: string | undefined) => {
-            if (value === undefined) return;
-
-            setLocalValue(value);
-
-            const output = parseValueForType(binding.type, structs, value);
-            if (output === null) setError(true);
-            else {
-                setError(false);
-                setBindingInput(binding.id, value, output);
-            }
-        },
-        [binding.id, binding.type, structs, setBindingInput]
+        (value: string, input: ArrayBuffer) => setBindingInput(binding.id, value, input),
+        [binding.id, setBindingInput]
     );
 
-    return (
-        <BindingDisplay
-            binding={binding}
-            value={localValue}
-            isError={error}
-            onChange={handleChange}
-            readOnly={readOnly}
-        />
-    );
+    const props = useVariableDisplayProps(binding.input, handleChange, binding.type, structs);
+
+    return <BindingDisplay binding={binding} {...props} readOnly={readOnly} />;
 };

@@ -158,5 +158,28 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
             if (state.type === "loading" || state.type === "failed-parse") set({ ...state, selected: runnable });
             else startGPUProcessing({ ...state, selected: runnable, type: "running" });
         },
+        setRunnableInput: (name: string, input: string, buffer: ArrayBuffer) => {
+            const state = get();
+            if (state.type === "loading") {
+                console.error(`Cannot set binding input for ${state.type} state`);
+                return;
+            }
+
+            if (state.selected?.type !== "function") {
+                console.error(`Cannot set runnable input for ${state.selected?.type} runnable`);
+                return;
+            }
+
+            startGPUProcessing({
+                ...state,
+                type: "running",
+                selected: {
+                    ...state.selected,
+                    arguments: state.selected.arguments.map((arg) =>
+                        arg.name === name ? { ...arg, input, buffer } : arg
+                    ),
+                },
+            });
+        },
     };
 };

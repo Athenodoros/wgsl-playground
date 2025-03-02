@@ -38,4 +38,5 @@ export interface AppActions {
     setWGSL: (wgsl: string | undefined) => void;
     setBindingInput: (id: string, input: string, buffer: ArrayBuffer) => void;
     selectRunnable: (runnable: Runnable) => void;
+    setRunnableInput: (name: string, input: string, buffer: ArrayBuffer) => void;
 }

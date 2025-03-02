@@ -48,18 +48,20 @@ export interface RunnableComputeShader {
     threads: [number, number, number];
 }
 
+export interface RunnableFunctionArgument {
+    name: string;
+    type: TypeInfo;
+    input: string;
+    buffer: ArrayBuffer;
+}
+
 export interface RunnableFunction {
     id: string;
     type: "function";
     name: string;
     startLine: number;
     endLine: number;
-    arguments: {
-        name: string;
-        type: TypeInfo;
-        input: string;
-        buffer: ArrayBuffer;
-    }[];
+    arguments: RunnableFunctionArgument[];
     output: TypeInfo | null;
 }
 
