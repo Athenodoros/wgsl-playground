@@ -42,7 +42,7 @@ export const RunnableInputs: React.FC = () => {
                     </div>
                 </div>
                 {output?.type === "compute" ? (
-                    <RunnableInput title="Work Group Size" subtext="X, Y, Z">
+                    <RunnableInput title="Work Group Count" subtext="X, Y, Z">
                         <NumericInputWrapper
                             placeholder="X"
                             defaultValue={output.threads[0]}
