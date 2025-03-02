@@ -1,12 +1,4 @@
-import {
-    Button,
-    MenuItem,
-    MenuItemProps,
-    NumericInput,
-    NumericInputProps,
-    SectionCard,
-    Switch,
-} from "@blueprintjs/core";
+import { Button, MenuItem, MenuItemProps, NumericInput, NumericInputProps, SectionCard } from "@blueprintjs/core";
 import { ItemRenderer, Select } from "@blueprintjs/select";
 import React from "react";
 import { useAppState } from "../../state";
@@ -74,7 +66,7 @@ export const RunnableInputs: React.FC = () => {
                                 onValueChange={(value) => setOutput({ ...output, vertices: value })}
                             />
                         </RunnableInput>
-                        <RunnableInput title="Depth Texture" subtext="depth32float">
+                        {/* <RunnableInput title="Depth Texture" subtext="depth32float">
                             <Switch
                                 className="!mb-0"
                                 checked={output.useDepthTexture}
@@ -82,7 +74,7 @@ export const RunnableInputs: React.FC = () => {
                                 alignIndicator="end"
                                 label={output.useDepthTexture ? "Enabled" : "Disabled"}
                             />
-                        </RunnableInput>
+                        </RunnableInput> */}
                     </>
                 ) : output?.type === "function" ? (
                     <>

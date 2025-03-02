@@ -2,8 +2,8 @@ import { parseWGSL } from "../utilities/parseWGSL";
 import { AppState } from "./types";
 
 export const DEFAULT_VERTEX_SHADER: string = `struct VertexOutput {
-    @builtin(position) position: vec4<f32>,
     @location(0) colour: vec3<f32>,
+    @builtin(position) position: vec4<f32>,
 }
 
 @vertex
