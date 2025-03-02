@@ -13,7 +13,7 @@ export const StructDisplay: React.FC = () => {
             title={`Struct Layouts (${structs.length})`}
             icon="curly-braces"
             disabled={structs.length === 0}
-            startClosed={true}
+            startClosed={false}
         >
             <SectionCard padded={true}>
                 {structs.map((s) => (

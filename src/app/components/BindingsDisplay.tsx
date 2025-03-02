@@ -14,7 +14,7 @@ export const BindingsDisplay: React.FC = () => {
             title={`Resource Binding Values (${bindings.length})`}
             icon="property"
             disabled={bindings.length === 0}
-            startClosed={true}
+            startClosed={false}
         >
             <SectionCard padded={false} className="my-4">
                 <div className="flex flex-col gap-4">
