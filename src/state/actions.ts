@@ -71,6 +71,11 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
                 return;
             }
 
+            if (result.runnables.length === 0) {
+                set({ ...state, type: "failed-parse", error: "No runnable functions found", wgsl }, true);
+                return;
+            }
+
             for (const binding of result.bindings) {
                 const oldBinding =
                     state.bindings.find((b) => b.id === binding.id) ??
@@ -101,13 +106,13 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
                 result.runnables[0] ??
                 null;
 
-            if (result.selected.type === "compute") {
+            if (result.selected?.type === "compute") {
                 if (state.selected?.type === "compute")
                     result.selected.threads = (state.selected as RunnableComputeShader).threads;
-            } else if (result.selected.type === "render") {
+            } else if (result.selected?.type === "render") {
                 if (state.selected?.type === "render")
                     result.selected.fragment = (state.selected as RunnableRender).fragment;
-            } else if (result.selected.type === "function") {
+            } else if (result.selected?.type === "function") {
                 for (const idx of range(result.selected.arguments.length)) {
                     const arg = result.selected.arguments[idx];
                     const oldArg =
@@ -126,7 +131,7 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
                         arg.buffer = oldArg.buffer;
                     }
                 }
-            } else assertNever(result.selected);
+            } else if (result.selected) assertNever(result.selected);
 
             startGPUProcessing({ ...state, ...result, wgsl });
         },

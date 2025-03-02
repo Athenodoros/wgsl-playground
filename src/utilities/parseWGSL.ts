@@ -29,7 +29,7 @@ export const parseWGSL = (
 
             const input = getDefaultValue(binding.type, reflect.reflect.structs);
             if (input.type === "error") {
-                error = input.value;
+                error = input.error;
                 return null;
             }
 

@@ -19,7 +19,7 @@ export const BindingsDisplay: React.FC = () => {
             <SectionCard padded={false} className="my-4">
                 <div className="flex flex-col gap-4">
                     {bindings.map((binding, index) => (
-                        <BindingDisplay key={index} binding={binding} />
+                        <InnerBindingDisplay key={index} binding={binding} />
                     ))}
                 </div>
             </SectionCard>
@@ -27,7 +27,7 @@ export const BindingsDisplay: React.FC = () => {
     );
 };
 
-const BindingDisplay: React.FC<{ binding: WgslBinding }> = ({ binding }) => {
+const InnerBindingDisplay: React.FC<{ binding: WgslBinding }> = ({ binding }) => {
     const readOnly = useAppState((state) => state.type === "failed-parse" || state.type === "loading");
     const setBindingInput = useAppState((state) => state.setBindingInput);
     const structs = useAppState((state) => state.structs);

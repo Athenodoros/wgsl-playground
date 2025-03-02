@@ -125,8 +125,32 @@ const getArrayLine = (line: BufferComponent[], addComma: boolean) =>
 
 type DefaultValueReturn = { type: "error"; error: string } | { type: "values"; value: string };
 export const getDefaultValue = (type: TypeInfo, structs: StructInfo[]): DefaultValueReturn => {
-    if (type.name === "f16") return { type: "error", error: "f16 not supported, due to limited browser support" };
-    if (type.name === "bool") return { type: "error", error: "bool not supported, due to limited browser support" };
+    if (["f16", "bool"].includes(type.name))
+        return { type: "error", error: `${type.name} not supported due to limited browser support` };
+    if (
+        [
+            "texture_1d",
+            "texture_2d",
+            "texture_2d_array",
+            "texture_3d",
+            "texture_cube",
+            "texture_cube_array",
+            "texture_multisampled_2d",
+            "texture_depth_multisampled_2d",
+            "texture_external",
+            "texture_storage_1d",
+            "texture_storage_2d",
+            "texture_storage_2d_array",
+            "texture_storage_3d",
+            "texture_depth_2d",
+            "texture_depth_2d_array",
+            "texture_depth_cube",
+            "texture_depth_cube_array",
+            "sampler",
+            "sampler_comparison",
+        ].includes(type.name)
+    )
+        return { type: "error", error: `${type.name} not supported` };
 
     const spec = getBufferSpec(type, structs);
     if (spec === null) return { type: "error", error: `Unknown type: ${type.name}` };
@@ -174,7 +198,8 @@ export const parseValueForType = (type: TypeInfo, structs: StructInfo[], value: 
     if (spec === null) return null;
 
     const rawValues = JSON.parse(value.replace(/\/\/[^\n]*\n/g, "\n"));
-    const values: (number | null)[] = spec.lines.length === 1 && spec.lines[0].length === 1 ? [rawValues] : rawValues;
+    const values: (number | null)[] =
+        !spec.repeat && spec.lines.length === 1 && spec.lines[0].length === 1 ? [rawValues] : rawValues;
 
     if (!Array.isArray(values) || values.some((v) => typeof v !== "number" && v !== null)) return null;
 
