@@ -33,8 +33,9 @@ jobs:
             - name: Build from source
               run: |
                   cd $GITHUB_WORKSPACE
-                  npm install
-                  npm run build
+                  npm install yarn
+                  yarn
+                  yarn build
 
             - name: Deploy to gh-pages branch
               run: |
