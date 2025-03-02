@@ -1,10 +1,9 @@
 import { StoreApi } from "zustand";
 import { assertNever, noop, range } from "../frontend-utils/general/data";
 import { parseWGSL } from "../utilities/parseWGSL";
-import { runWGSLFunction } from "../utilities/runner";
-import { RunnableComputeShader, RunnableFunction, RunnableRender } from "../utilities/types";
-import { getDefaultValue, getDefaultValueForType } from "../utilities/values";
-import { AppActions, AppRunningState, AppState } from "./types";
+import { runWGSLFunction } from "../utilities/runWGSLFunction";
+import { ParseResults, RunnableComputeShader, RunnableFunction, RunnableRender } from "../utilities/types";
+import { AppActions, AppFailedParseState, AppFinishedState, AppRunningState, AppState } from "./types";
 
 export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi<AppState>["getState"]): AppActions => {
     let cancel: () => void = noop;
@@ -22,12 +21,10 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
             cancelled = true;
         };
 
-        runWGSLFunction(state.device, state.wgsl, state.selected, state.bindings, state.structs, state.canvas).then(
-            (results) => {
-                if (cancelled) return;
-                set({ ...state, type: "finished", results }, true);
-            }
-        );
+        runWGSLFunction(state.device, state.wgsl, state.selected, state.bindings, state.canvas).then((results) => {
+            if (cancelled) return;
+            set({ ...state, type: "finished", results }, true);
+        });
     };
 
     return {
@@ -76,62 +73,7 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
                 return;
             }
 
-            for (const binding of result.bindings) {
-                const oldBinding =
-                    state.bindings.find((b) => b.id === binding.id) ??
-                    state.bindings.find((b) => b.name === binding.name);
-                if (oldBinding === undefined) continue;
-
-                const newDefault = getDefaultValue(binding, wgsl, result.structs);
-                const oldDefault = getDefaultValue(oldBinding, state.wgsl, state.structs);
-                if (
-                    newDefault.type === "values" &&
-                    oldDefault.type === "values" &&
-                    newDefault.value === oldDefault.value
-                ) {
-                    binding.input = oldBinding.input;
-                    binding.buffer = oldBinding.buffer;
-                }
-            }
-
-            result.selected =
-                result.runnables.find((r) => {
-                    if (r.type === "compute" && state.selected?.type === "compute")
-                        return r.name === state.selected.name;
-                    if (r.type === "render" && state.selected?.type === "render")
-                        return r.fragment === state.selected.fragment && r.vertex === state.selected.vertex;
-                    if (r.type === "function" && state.selected?.type === "function")
-                        return r.name === state.selected.name;
-                }) ??
-                result.runnables[0] ??
-                null;
-
-            if (result.selected?.type === "compute") {
-                if (state.selected?.type === "compute")
-                    result.selected.threads = (state.selected as RunnableComputeShader).threads;
-            } else if (result.selected?.type === "render") {
-                if (state.selected?.type === "render")
-                    result.selected.fragment = (state.selected as RunnableRender).fragment;
-            } else if (result.selected?.type === "function") {
-                for (const idx of range(result.selected.arguments.length)) {
-                    const arg = result.selected.arguments[idx];
-                    const oldArg =
-                        (state.selected as RunnableFunction).arguments.find((a) => a.name === arg.name) ??
-                        (state.selected as RunnableFunction).arguments[idx];
-                    if (oldArg === undefined) continue;
-
-                    const newDefault = getDefaultValueForType(arg.type, result.structs);
-                    const oldDefault = getDefaultValueForType(oldArg.type, state.structs);
-                    if (
-                        newDefault.type === "values" &&
-                        oldDefault.type === "values" &&
-                        newDefault.value === oldDefault.value
-                    ) {
-                        arg.input = oldArg.input;
-                        arg.buffer = oldArg.buffer;
-                    }
-                }
-            } else if (result.selected) assertNever(result.selected);
+            updateParseResultsFromPrevious(result, state);
 
             startGPUProcessing({ ...state, ...result, wgsl });
         },
@@ -182,4 +124,54 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
             });
         },
     };
+};
+
+const updateParseResultsFromPrevious = (
+    result: ParseResults,
+    state: AppFailedParseState | AppRunningState | AppFinishedState
+) => {
+    for (const binding of result.bindings) {
+        const oldBinding =
+            state.bindings.find((b) => b.id === binding.id) ?? state.bindings.find((b) => b.name === binding.name);
+        if (oldBinding === undefined) continue;
+
+        const newDefault = binding.type.getDefaultValue();
+        const oldDefault = oldBinding.type.getDefaultValue();
+        if (newDefault.type === "values" && oldDefault.type === "values" && newDefault.value === oldDefault.value) {
+            binding.input = oldBinding.input;
+            binding.buffer = oldBinding.buffer;
+        }
+    }
+
+    result.selected =
+        result.runnables.find((r) => {
+            if (r.type === "compute" && state.selected?.type === "compute") return r.name === state.selected.name;
+            if (r.type === "render" && state.selected?.type === "render")
+                return r.fragment === state.selected.fragment && r.vertex === state.selected.vertex;
+            if (r.type === "function" && state.selected?.type === "function") return r.name === state.selected.name;
+        }) ??
+        result.runnables[0] ??
+        null;
+
+    if (result.selected?.type === "compute") {
+        if (state.selected?.type === "compute")
+            result.selected.threads = (state.selected as RunnableComputeShader).threads;
+    } else if (result.selected?.type === "render") {
+        if (state.selected?.type === "render") result.selected.fragment = (state.selected as RunnableRender).fragment;
+    } else if (result.selected?.type === "function") {
+        for (const idx of range(result.selected.arguments.length)) {
+            const arg = result.selected.arguments[idx];
+            const oldArg =
+                (state.selected as RunnableFunction).arguments.find((a) => a.name === arg.name) ??
+                (state.selected as RunnableFunction).arguments[idx];
+            if (oldArg === undefined) continue;
+
+            const newDefault = arg.type.getDefaultValue();
+            const oldDefault = oldArg.type.getDefaultValue();
+            if (newDefault.type === "values" && oldDefault.type === "values" && newDefault.value === oldDefault.value) {
+                arg.input = oldArg.input;
+                arg.buffer = oldArg.buffer;
+            }
+        }
+    } else if (result.selected) assertNever(result.selected);
 };

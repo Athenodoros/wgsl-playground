@@ -1,6 +1,19 @@
-import { ArrayInfo, StructInfo, TemplateInfo, TypeInfo, VariableInfo } from "wgsl_reflect";
+import { ArrayInfo, StructInfo, TemplateInfo, TypeInfo } from "wgsl_reflect";
 import { range, repeat } from "../frontend-utils/general/data";
 import { WgslBinding } from "./types";
+
+export class WGSLType {
+    constructor(private type: TypeInfo, private structs: StructInfo[]) {}
+
+    getDisplay = () => getTypeDisplay(this.type);
+    getDefaultValue = (getDefaultValue: () => number = () => 1) =>
+        getDefaultValueForType(this.type, this.structs, getDefaultValue);
+    getDefaultValueForAttributes = (attributes: WgslBinding["attributes"], wgsl: string) =>
+        getDefaultValueForAttributes(this, attributes, wgsl);
+    getValuesFromString = (value: string) => getValuesFromStringForType(this.type, this.structs, value);
+    getBufferFromString = (value: string) => getBufferFromStringForType(this.type, this.structs, value);
+    getStringFromBuffer = (buffer: ArrayBuffer) => getStringFromBufferForType(this.type, this.structs, buffer);
+}
 
 export const getTypeDisplay = (type: TypeInfo): string => {
     if (type.name === "array") {
@@ -135,7 +148,7 @@ const getArrayLine = (line: BufferComponent[], addComma: boolean, getDefaultValu
 
 type DefaultValueReturn = { type: "error"; error: string } | { type: "values"; value: string };
 
-export const getDefaultValueForType = (
+const getDefaultValueForType = (
     type: TypeInfo,
     structs: StructInfo[],
     getDefaultValue: () => number = () => 1
@@ -208,18 +221,18 @@ export const getDefaultValueForType = (
     };
 };
 
-export const getDefaultValue = (
-    binding: WgslBinding | VariableInfo,
-    wgsl: string,
-    structs: StructInfo[]
+const getDefaultValueForAttributes = (
+    type: WGSLType,
+    attributes: WgslBinding["attributes"],
+    wgsl: string
 ): DefaultValueReturn => {
     const codeLines = wgsl.split("\n");
 
     const spec =
-        binding.attributes
+        attributes
             ?.map((a) => {
                 const line = a.line - 1;
-                const comment = codeLines[line].match(/\/\/(.*)/)?.[1]?.trim();
+                const comment = codeLines[line].match(/\/\/\/?(.*)/)?.[1]?.trim();
                 if (!comment) return null;
                 if (!isNaN(Number(comment))) return () => Number(comment);
 
@@ -244,10 +257,10 @@ export const getDefaultValue = (
             })
             ?.find((c) => c !== null) ?? null;
 
-    return getDefaultValueForType(binding.type, structs, spec ?? (() => 1));
+    return type.getDefaultValue(spec ?? (() => 1));
 };
 
-export const parseValueForTypeToList = (type: TypeInfo, structs: StructInfo[], value: string) => {
+const getStringParseResults = (type: TypeInfo, structs: StructInfo[], value: string) => {
     const spec = getBufferSpec(type, structs);
     if (spec === null) return [null, null];
 
@@ -265,8 +278,11 @@ export const parseValueForTypeToList = (type: TypeInfo, structs: StructInfo[], v
     }
 };
 
-export const parseValueForType = (type: TypeInfo, structs: StructInfo[], value: string): ArrayBuffer | null => {
-    const [values, spec] = parseValueForTypeToList(type, structs, value);
+const getValuesFromStringForType = (type: TypeInfo, structs: StructInfo[], value: string) =>
+    getStringParseResults(type, structs, value)[0];
+
+const getBufferFromStringForType = (type: TypeInfo, structs: StructInfo[], value: string): ArrayBuffer | null => {
+    const [values, spec] = getStringParseResults(type, structs, value);
     if (spec === null || values === null) return null;
 
     const components = spec.repeat ? repeat(spec.lines[0], values.length / spec.lines[0].length) : spec.lines.flat();
@@ -293,7 +309,7 @@ export const parseValueForType = (type: TypeInfo, structs: StructInfo[], value: 
     return buffer;
 };
 
-export const parseBufferForType = (type: TypeInfo, structs: StructInfo[], buffer: ArrayBuffer): string => {
+const getStringFromBufferForType = (type: TypeInfo, structs: StructInfo[], buffer: ArrayBuffer): string => {
     const spec = getBufferSpec(type, structs);
     if (spec === null) return "Could not get buffer spec";
 

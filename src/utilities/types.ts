@@ -1,13 +1,14 @@
 import { IconName, Intent } from "@blueprintjs/core";
 import { ReactNode } from "react";
-import { Attribute, ResourceType, StructInfo, TypeInfo } from "wgsl_reflect";
+import { Attribute, ResourceType, StructInfo } from "wgsl_reflect";
+import { WGSLType } from "./WGSLType";
 
 export interface WgslBinding {
     id: string;
     group: number;
     index: number;
     name: string;
-    type: TypeInfo;
+    type: WGSLType;
     attributes: Attribute[] | null;
     writable: boolean;
     resourceType: ResourceType;
@@ -22,7 +23,7 @@ export interface BindingOutput {
 
 export interface FunctionOutput {
     name: string;
-    type: TypeInfo;
+    type: WGSLType;
     value: string;
 }
 
@@ -50,7 +51,7 @@ export interface RunnableComputeShader {
 
 export interface RunnableFunctionArgument {
     name: string;
-    type: TypeInfo;
+    type: WGSLType;
     input: string;
     buffer: ArrayBuffer;
 }
@@ -62,15 +63,8 @@ export interface RunnableFunction {
     startLine: number;
     endLine: number;
     arguments: RunnableFunctionArgument[];
-    output: TypeInfo | null;
+    output: WGSLType | null;
 }
-
-// interface RunnableRenderTriangles {
-//     id: string;
-//     type: "render-triangles";
-//     vertex: string;
-//     vertices: number;
-// }
 
 export interface RunnableRender {
     id: string;

@@ -1,5 +1,5 @@
 import { CSSProperties, useCallback, useState } from "react";
-import { useAppState } from "../../state";
+import { useAppState } from "../../../state";
 
 const SCALING = window.devicePixelRatio || 1;
 const CANVAS_WIDTH = 640;

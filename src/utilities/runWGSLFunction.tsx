@@ -1,4 +1,4 @@
-import { ResourceType, StructInfo, TypeInfo } from "wgsl_reflect";
+import { ResourceType } from "wgsl_reflect";
 import { assertNever, range, uniq } from "../frontend-utils/general/data";
 import { getReflectionOrError } from "./parseWGSL";
 import {
@@ -12,7 +12,7 @@ import {
     RunnerResults,
     WgslBinding,
 } from "./types";
-import { getDefaultValueForType, parseBufferForType, parseValueForType, parseValueForTypeToList } from "./values";
+import { WGSLType } from "./WGSLType";
 
 const STUB_FUNCTION_RUNNER_OUTPUT_BINDING_ID = "stub_function_runner_output";
 const STUB_FUNCTION_RUNNER_NAME = "_wgsl_playground_function_runner__";
@@ -22,7 +22,6 @@ export const runWGSLFunction = async (
     wgsl: string,
     runnable: Runnable,
     bindings: WgslBinding[],
-    structs: StructInfo[],
     canvas: HTMLCanvasElement
 ): Promise<RunnerResults> => {
     if (bindings.some((b) => b.resourceType !== ResourceType.Uniform && b.resourceType !== ResourceType.Storage))
@@ -31,8 +30,8 @@ export const runWGSLFunction = async (
     device.pushErrorScope("validation");
 
     if (runnable.type === "render") return runRenderShader(device, wgsl, runnable, bindings, canvas);
-    if (runnable.type === "compute") return runComputeShader(device, wgsl, runnable, bindings, structs);
-    if (runnable.type === "function") return runSimpleFunction(device, wgsl, runnable, bindings, structs);
+    if (runnable.type === "compute") return runComputeShader(device, wgsl, runnable, bindings);
+    if (runnable.type === "function") return runSimpleFunction(device, wgsl, runnable, bindings);
 
     assertNever(runnable);
     return { type: "errors", errors: [formatRuntimeError(new Error("Unsupported runnable type"))] }; // Never reaches this point
@@ -42,8 +41,7 @@ const runSimpleFunction = async (
     device: GPUDevice,
     wgsl: string,
     runnable: RunnableFunction,
-    bindings: WgslBinding[],
-    structs: StructInfo[]
+    bindings: WgslBinding[]
 ): Promise<RunnerResults> => {
     const runner = getCodeRunnerForFunction(runnable, bindings, wgsl);
     if (runner.type === "error") return { type: "errors", errors: [formatRuntimeError(new Error(runner.error))] };
@@ -51,7 +49,7 @@ const runSimpleFunction = async (
     const module = device.createShaderModule({ code: runner.code });
     const buffers = runComputeModule(device, module, runner.bindings, STUB_FUNCTION_RUNNER_NAME, [1, 1, 1]);
     const buffer = buffers[STUB_FUNCTION_RUNNER_OUTPUT_BINDING_ID];
-    const value = await readBufferValue(device, buffer, runner.outputBindingType, structs);
+    const value = await readBufferValue(device, buffer, runner.outputBindingType);
 
     return maybeReturnResults(wgsl, [], device, module, { name: runnable.name, type: runner.outputBindingType, value });
 };
@@ -158,8 +156,7 @@ const runComputeShader = async (
     device: GPUDevice,
     wgsl: string,
     runnable: RunnableComputeShader,
-    bindings: WgslBinding[],
-    structs: StructInfo[]
+    bindings: WgslBinding[]
 ): Promise<RunnerResults> => {
     const module = device.createShaderModule({ code: wgsl });
     const buffers = runComputeModule(device, module, bindings, runnable.name, runnable.threads);
@@ -167,7 +164,7 @@ const runComputeShader = async (
     const promises = bindings
         .filter((binding) => binding.writable)
         .map((binding) =>
-            readBufferValue(device, buffers[binding.id], binding.type, structs).then((value) => ({ binding, value }))
+            readBufferValue(device, buffers[binding.id], binding.type).then((value) => ({ binding, value }))
         );
 
     return maybeReturnResults(wgsl, await Promise.all(promises), device, module, null);
@@ -274,7 +271,7 @@ const getCodeRunnerForFunction = (
     originalBindings: WgslBinding[],
     wgsl: string
 ):
-    | { type: "code"; code: string; bindings: WgslBinding[]; outputBindingType: TypeInfo }
+    | { type: "code"; code: string; bindings: WgslBinding[]; outputBindingType: WGSLType }
     | { type: "error"; error: string } => {
     // Find first unused bind group
     const usedGroups = new Set(originalBindings.map((b) => b.group));
@@ -327,28 +324,26 @@ fn ${STUB_FUNCTION_RUNNER_NAME}() {
 
     const reflect = getReflectionOrError(code);
     if (reflect.type === "error") return { type: "error", error: reflect.error };
-    // Get bindings
-    const inputBindingType = reflect.reflect.structs.find((s) => s.name === "WGSLPlaygroundFunctionInputsStruct");
-    if (inputBindingType === undefined) return { type: "error", error: "Could not find input binding type" };
 
-    const rawResults = runnable.arguments.map(
-        (arg) => parseValueForTypeToList(arg.type, reflect.reflect.structs, arg.input)[0]
-    );
+    // Get bindings
+    const inputBindingType = new WGSLType(reflect.reflect.getBindGroups()[newGroupId][0].type, reflect.reflect.structs);
+    const rawResults = runnable.arguments.map((arg) => arg.type.getValuesFromString(arg.input));
     if (rawResults.some((r) => r === null))
         return { type: "error", error: "Could not map default values for input bindings" };
     const results = rawResults.flatMap((r) => r).filter((r) => r !== null);
     let resultIndex = 0;
-    const getDefaultValue = () => results[resultIndex++] ?? -1;
-
-    const inputBindingValue = getDefaultValueForType(inputBindingType, reflect.reflect.structs, getDefaultValue);
+    const inputBindingValue = inputBindingType.getDefaultValue(() => results[resultIndex++] ?? -1);
     if (inputBindingValue.type === "error") return inputBindingValue;
-    const inputBindingBuffer = parseValueForType(inputBindingType, reflect.reflect.structs, inputBindingValue.value);
+    const inputBindingBuffer = inputBindingType.getBufferFromString(inputBindingValue.value);
     if (inputBindingBuffer === null) return { type: "error", error: "Could not parse default value for input binding" };
 
-    const outputBindingType = runnable.output ?? new TypeInfo("i32", null);
-    const outputBindingValue = getDefaultValueForType(outputBindingType, reflect.reflect.structs);
+    const outputBindingType = new WGSLType(
+        reflect.reflect.getBindGroups()[newGroupId][1].type,
+        reflect.reflect.structs
+    );
+    const outputBindingValue = outputBindingType.getDefaultValue();
     if (outputBindingValue.type === "error") return outputBindingValue;
-    const outputBindingBuffer = parseValueForType(outputBindingType, reflect.reflect.structs, outputBindingValue.value);
+    const outputBindingBuffer = outputBindingType.getBufferFromString(outputBindingValue.value);
     if (outputBindingBuffer === null)
         return { type: "error", error: "Could not parse default value for output binding" };
 
@@ -409,12 +404,7 @@ const runComputeModule = (
     return buffers;
 };
 
-const readBufferValue = async (
-    device: GPUDevice,
-    buffer: GPUBuffer,
-    type: TypeInfo,
-    structs: StructInfo[]
-): Promise<string> => {
+const readBufferValue = async (device: GPUDevice, buffer: GPUBuffer, type: WGSLType): Promise<string> => {
     const commandEncoder = device.createCommandEncoder();
     const destination = device.createBuffer({
         size: buffer.size,
@@ -424,5 +414,5 @@ const readBufferValue = async (
     device.queue.submit([commandEncoder.finish()]);
 
     await destination.mapAsync(GPUMapMode.READ);
-    return parseBufferForType(type, structs, destination.getMappedRange());
+    return type.getStringFromBuffer(destination.getMappedRange());
 };

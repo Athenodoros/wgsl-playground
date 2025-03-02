@@ -1,8 +1,8 @@
 import { Callout, NonIdealState, SectionCard } from "@blueprintjs/core";
-import { noop } from "../../frontend-utils/general/data";
-import { useAppState } from "../../state";
+import { useAppState } from "../../../state";
+import { BindingDisplay } from "../../shared/BindingDisplay";
+import { VariableDisplay } from "../../shared/VariableDisplay";
 import { OutputCanvas } from "./OutputCanvas";
-import { BindingDisplay, VariableDisplay } from "./VariableDisplay";
 
 export const RunnableOutputs: React.FC = () => {
     const parseError = useAppState((state) => (state.type === "failed-parse" ? state.error : null));
@@ -57,8 +57,6 @@ export const RunnableOutputs: React.FC = () => {
                               binding={result.binding}
                               value={result.value}
                               isError={false}
-                              onChange={noop}
-                              readOnly={true}
                           />
                       ))
                       .concat(
@@ -71,8 +69,6 @@ export const RunnableOutputs: React.FC = () => {
                                         type={output.output}
                                         value={results.returned.value}
                                         isError={false}
-                                        onChange={noop}
-                                        readOnly={true}
                                     />,
                                 ]
                               : []

@@ -1,39 +1,22 @@
-import { Button, MenuItem, MenuItemProps, NumericInput, NumericInputProps, SectionCard } from "@blueprintjs/core";
-import { ItemRenderer, Select } from "@blueprintjs/select";
+import { NumericInput, NumericInputProps, SectionCard } from "@blueprintjs/core";
 import React, { useCallback } from "react";
-import { StructInfo } from "wgsl_reflect";
-import { useAppState } from "../../state";
-import { Runnable, RunnableFunctionArgument } from "../../utilities/types";
-import { useVariableDisplayProps, VariableDisplay } from "./VariableDisplay";
+import { useAppState } from "../../../state";
+import { RunnableFunctionArgument } from "../../../utilities/types";
+import { useVariableDisplayProps } from "../../shared/useVariableDisplayProps";
+import { VariableDisplay } from "../../shared/VariableDisplay";
+import { RunnableDropdown } from "./RunnableDropdown";
 
 export const RunnableInputs: React.FC = () => {
     const output = useAppState((state) => state.selected);
     const setOutput = useAppState((state) => state.selectRunnable);
     const options = useAppState((state) => state.runnables);
-    const structs = useAppState((state) => state.structs);
 
     return (
         <SectionCard padded={true}>
             <div className="flex flex-col gap-4">
                 <div className="flex justify-between items-center">
                     <p className="!mb-0 bg-slate-100 py-1 px-2 rounded-md">Run Target</p>
-                    <div className="flex gap-2">
-                        <Select<Runnable>
-                            items={options}
-                            itemRenderer={renderCallOption}
-                            onItemSelect={setOutput}
-                            // popoverProps={{ matchTargetWidth: true }}
-                        >
-                            <Button
-                                {...getCallOptionProps(output)}
-                                variant="outlined"
-                                intent="primary"
-                                // className="!min-w-2xs [&>.bp5-button-text]:!grow"
-                                endIcon="chevron-down"
-                                disabled={options.length === 0}
-                            />
-                        </Select>
-                    </div>
+                    <RunnableDropdown options={options} selected={output} setOutput={setOutput} />
                 </div>
                 {output?.type === "compute" ? (
                     <RunnableInput title="Work Group Count" subtext="X, Y, Z">
@@ -65,7 +48,7 @@ export const RunnableInputs: React.FC = () => {
                             <NumericInputWrapper
                                 placeholder="Count"
                                 defaultValue={output.vertices}
-                                onValueChange={(value) => setOutput({ ...output, vertices: value })}
+                                onValueChange={(vertices) => setOutput({ ...output, vertices })}
                             />
                         </RunnableInput>
                         {/* <RunnableInput title="Depth Texture" subtext="depth32float">
@@ -81,7 +64,7 @@ export const RunnableInputs: React.FC = () => {
                 ) : output?.type === "function" ? (
                     <>
                         {output.arguments.map((arg) => (
-                            <FunnableInputDisplay key={arg.name} arg={arg} structs={structs} />
+                            <RunnableInputDisplay key={arg.name} arg={arg} />
                         ))}
                     </>
                 ) : null}
@@ -90,18 +73,16 @@ export const RunnableInputs: React.FC = () => {
     );
 };
 
-const FunnableInputDisplay: React.FC<{ arg: RunnableFunctionArgument; structs: StructInfo[] }> = ({ arg, structs }) => {
+const RunnableInputDisplay: React.FC<{ arg: RunnableFunctionArgument }> = ({ arg }) => {
     const setRunnableInput = useAppState((state) => state.setRunnableInput);
     const onUpdate = useCallback(
         (value: string, buffer: ArrayBuffer) => setRunnableInput(arg.name, value, buffer),
         [arg.name, setRunnableInput]
     );
 
-    const props = useVariableDisplayProps(arg.input, onUpdate, arg.type, structs);
+    const props = useVariableDisplayProps(arg.input, onUpdate, arg.type);
 
-    return (
-        <VariableDisplay title={arg.name} subtitle="function argument" type={arg.type} {...props} readOnly={false} />
-    );
+    return <VariableDisplay title={arg.name} subtitle="function argument" type={arg.type} {...props} />;
 };
 
 const RunnableInput: React.FC<{ title: string; subtext?: string; children: React.ReactNode }> = ({
@@ -126,24 +107,3 @@ const NumericInputWrapper: React.FC<NumericInputProps> = ({ ...props }) => (
         className={`[&>.bp5-input-group]:!w-20 ${props.className ?? ""}`}
     />
 );
-
-const renderCallOption: ItemRenderer<Runnable> = (runnable, { handleClick }) => (
-    <MenuItem key={runnable.id} {...getCallOptionProps(runnable)} onClick={handleClick} />
-);
-
-const getCallOptionProps = (runnable: Runnable | null): Pick<MenuItemProps, "icon" | "text"> => {
-    if (!runnable) {
-        return { icon: "widget", text: "No options available" };
-    }
-
-    switch (runnable.type) {
-        // case "render-triangles":
-        //     return { icon: "widget", text: `${runnable.vertex} (Render Triangles)` };
-        case "render":
-            return { icon: "media", text: `${runnable.vertex} + ${runnable.fragment}` };
-        case "compute":
-            return { icon: "derive-column", text: `${runnable.name}` };
-        case "function":
-            return { icon: "variable", text: `${runnable.name}` };
-    }
-};

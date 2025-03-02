@@ -6,5 +6,5 @@ import glsl from "vite-plugin-glsl";
 // https://vite.dev/config/
 export default defineConfig({
     base: "/wgsl-playground/",
-    plugins: [react(), tailwindcss(), glsl()],
+    plugins: [react(), tailwindcss(), glsl({ defaultExtension: "wgsl" })],
 });

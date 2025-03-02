@@ -1,11 +1,13 @@
 import { Button, Menu, MenuItem, Popover, Section } from "@blueprintjs/core";
 import { Editor } from "@monaco-editor/react";
 import { useState } from "react";
+import defaultComputeShader from "../../examples/default_compute_shader.wgsl";
+import defaultVertexShader from "../../examples/default_vertex_shader.wgsl";
 import { noop } from "../../frontend-utils/general/data";
 import { useAppState } from "../../state";
-import { DEFAULT_COMPUTE_SHADER, DEFAULT_VERTEX_SHADER, INITIAL_APP_STATE } from "../../state/defaults";
+import { INITIAL_APP_STATE } from "../../state/defaults";
 
-export const MainEditor: React.FC = () => {
+export const WGSLEditor: React.FC = () => {
     const wgsl = useAppState((state) => state.wgsl);
     const setWGSL = useAppState((state) => state.setWGSL);
     const [setEditorValue, setSetEditorValue] = useState<(value: string) => void>(noop);
@@ -28,14 +30,14 @@ export const MainEditor: React.FC = () => {
                                 <MenuItem
                                     icon="media"
                                     text="Triangle Vertex Shader"
-                                    onClick={setExample(DEFAULT_VERTEX_SHADER)}
-                                    disabled={wgsl === DEFAULT_VERTEX_SHADER}
+                                    onClick={setExample(defaultVertexShader.replace(/\/\/\//g, "//"))} // vite-plugin-glsl mangles comments unless they have triple slashes...
+                                    disabled={wgsl === defaultVertexShader.replace(/\/\/\//g, "//")}
                                 />
                                 <MenuItem
                                     icon="derive-column"
                                     text="CumSum Compute Shader"
-                                    onClick={setExample(DEFAULT_COMPUTE_SHADER)}
-                                    disabled={wgsl === DEFAULT_COMPUTE_SHADER}
+                                    onClick={setExample(defaultComputeShader.replace(/\/\/\//g, "//"))}
+                                    disabled={wgsl === defaultComputeShader.replace(/\/\/\//g, "//")}
                                 />
                             </Menu>
                         }
@@ -53,7 +55,9 @@ export const MainEditor: React.FC = () => {
                         onChange={setWGSL}
                         onMount={(editor) =>
                             // Extra currying because react calls functions to get the new state value
-                            setSetEditorValue(() => (value: string) => editor.getModel()?.setValue(value))
+                            setSetEditorValue(
+                                (_state: unknown) => (value: string) => editor.getModel()?.setValue(value)
+                            )
                         }
                     />
                 </div>

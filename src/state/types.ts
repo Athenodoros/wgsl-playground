@@ -7,7 +7,7 @@ interface AppLoadingState extends ParseResults {
     wgsl: string;
 }
 
-interface AppFailedParseState extends ParseResults {
+export interface AppFailedParseState extends ParseResults {
     type: "failed-parse";
     device: GPUDevice | null;
     canvas: HTMLCanvasElement;
@@ -22,7 +22,7 @@ export interface AppRunningState extends ParseResults {
     wgsl: string;
 }
 
-interface AppFinishedState extends ParseResults {
+export interface AppFinishedState extends ParseResults {
     type: "finished";
     device: GPUDevice | null;
     canvas: HTMLCanvasElement;

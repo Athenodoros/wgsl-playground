@@ -8,4 +8,4 @@ export const useAppState = create<AppState & AppActions>()((set, get) => ({
     ...getAppActions(set, get),
 }));
 
-Object.assign(window, useAppState);
+Object.assign(window, { getAppState: useAppState.getState });

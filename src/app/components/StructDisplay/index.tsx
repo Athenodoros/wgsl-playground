@@ -1,9 +1,9 @@
 import { SectionCard } from "@blueprintjs/core";
 import React from "react";
 import { StructInfo } from "wgsl_reflect";
-import { useAppState } from "../../state";
-import { getTypeDisplay } from "../../utilities/values";
-import { RightSection } from "./RightSection";
+import { useAppState } from "../../../state";
+import { RightSection } from "../../shared/RightSection";
+import { getFieldDisplays } from "./getFieldDisplays";
 
 export const StructDisplay: React.FC = () => {
     const structs = useAppState((state) => state.structs);
@@ -27,47 +27,7 @@ export const StructDisplay: React.FC = () => {
 const SingleStructDisplay: React.FC<{ struct: StructInfo }> = ({ struct }) => {
     const rows = Math.ceil(struct.size / 16);
 
-    const entries = struct.members.flatMap((m, idx) => {
-        const startColumn = Math.floor(m.offset % 16) / 4;
-        const endColumn = Math.floor((m.offset + m.size - 4) % 16) / 4;
-        const startRow = Math.floor(m.offset / 16);
-        const endRow = Math.floor((m.offset + m.size - 4) / 16);
-
-        const styles: React.CSSProperties = {
-            gridArea: `${startRow + 1} / ${startColumn + 1} / ${endRow + 2} / ${endColumn + 2}`,
-            backgroundColor: COLOURS[idx % COLOURS.length],
-            zIndex: 10,
-        };
-        const boxes = [
-            {
-                name: m.name,
-                description: getTypeDisplay(m.type),
-                styles,
-            },
-        ];
-
-        const nextOffset = idx === struct.members.length - 1 ? struct.size : struct.members[idx + 1].offset;
-        const gap = nextOffset - m.offset - m.size;
-        if (gap > 0) {
-            const paddingStartRow = Math.floor((m.offset + m.size) / 16);
-            const paddingStartColumn = Math.floor((m.offset + m.size) % 16) / 4;
-            const nextStartRow = Math.floor((nextOffset - 4) / 16);
-            const nextStartColumn = Math.floor((nextOffset - 4) % 16) / 4;
-
-            boxes.push({
-                name: "padding",
-                description: `${gap} bytes`,
-                styles: {
-                    gridArea: `${paddingStartRow + 1} / ${paddingStartColumn + 1} / ${nextStartRow + 2} / ${
-                        nextStartColumn + 2
-                    }`,
-                    backgroundColor: "oklch(0.704 0.04 256.788)",
-                },
-            });
-        }
-
-        return boxes;
-    });
+    const entries = getFieldDisplays(struct);
 
     return (
         <div key={struct.name}>
@@ -104,17 +64,3 @@ const SingleStructDisplay: React.FC<{ struct: StructInfo }> = ({ struct }) => {
         </div>
     );
 };
-
-// Blueprint qualitative colour palette
-const COLOURS = [
-    "#147EB3",
-    "#29A634",
-    "#D1980B",
-    "#D33D17",
-    "#9D3F9D",
-    "#00A396",
-    "#DB2C6F",
-    "#8EB125",
-    "#946638",
-    "#7961DB",
-];

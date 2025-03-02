@@ -2,8 +2,9 @@ import { SectionCard } from "@blueprintjs/core";
 import React, { useCallback } from "react";
 import { useAppState } from "../../state";
 import { WgslBinding } from "../../utilities/types";
-import { RightSection } from "./RightSection";
-import { BindingDisplay, useVariableDisplayProps } from "./VariableDisplay";
+import { BindingDisplay } from "../shared/BindingDisplay";
+import { RightSection } from "../shared/RightSection";
+import { useVariableDisplayProps } from "../shared/useVariableDisplayProps";
 
 export const BindingsDisplay: React.FC = () => {
     const bindings = useAppState((state) => state.bindings);
@@ -29,14 +30,13 @@ export const BindingsDisplay: React.FC = () => {
 const InnerBindingDisplay: React.FC<{ binding: WgslBinding }> = ({ binding }) => {
     const readOnly = useAppState((state) => state.type === "failed-parse" || state.type === "loading");
     const setBindingInput = useAppState((state) => state.setBindingInput);
-    const structs = useAppState((state) => state.structs);
 
     const handleChange = useCallback(
         (value: string, input: ArrayBuffer) => setBindingInput(binding.id, value, input),
         [binding.id, setBindingInput]
     );
 
-    const props = useVariableDisplayProps(binding.input, handleChange, binding.type, structs);
+    const props = useVariableDisplayProps(binding.input, handleChange, binding.type);
 
     return <BindingDisplay binding={binding} {...props} readOnly={readOnly} />;
 };
