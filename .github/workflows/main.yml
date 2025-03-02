@@ -33,6 +33,7 @@ jobs:
             - name: Build from source
               run: |
                   cd $GITHUB_WORKSPACE
+                  npm install
                   npm run build
 
             - name: Deploy to gh-pages branch
