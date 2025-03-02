@@ -1,6 +1,6 @@
 import { WgslReflect } from "wgsl_reflect";
 import { ParseResults, Runnable, RunnableFunction, WgslBinding } from "./types";
-import { getDefaultValue, parseValueForType } from "./values";
+import { getDefaultValue, getDefaultValueForType, parseValueForType } from "./values";
 
 export const getReflectionOrError = (wgsl: string, addToWindow: boolean = false) => {
     try {
@@ -27,7 +27,7 @@ export const parseWGSL = (
         bg.map((binding, bindIdx) => {
             const id = `${groupIdx}:${bindIdx}`;
 
-            const input = getDefaultValue(binding.type, reflect.reflect.structs);
+            const input = getDefaultValue(binding, wgsl, reflect.reflect.structs);
             if (input.type === "error") {
                 error = input.error;
                 return null;
@@ -45,6 +45,7 @@ export const parseWGSL = (
                 index: bindIdx,
                 name: binding.name,
                 type: binding.type,
+                attributes: binding.attributes,
                 resourceType: binding.resourceType,
                 writable: binding.access === "write" || binding.access === "read_write",
                 input: input.value,
@@ -71,7 +72,7 @@ const getFunctionRunOptions = (reflection: WgslReflect): Runnable[] => {
     return reflection.functions.flatMap((f): Runnable[] => {
         if (f.stage === null) {
             const args = f.arguments.map((arg) => {
-                const value = getDefaultValue(arg.type, reflection.structs);
+                const value = getDefaultValueForType(arg.type, reflection.structs);
                 if (value.type === "error") return null;
 
                 const buffer = parseValueForType(arg.type, reflection.structs, value.value);

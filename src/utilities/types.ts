@@ -1,6 +1,6 @@
 import { IconName, Intent } from "@blueprintjs/core";
 import { ReactNode } from "react";
-import { ResourceType, StructInfo, TypeInfo } from "wgsl_reflect";
+import { Attribute, ResourceType, StructInfo, TypeInfo } from "wgsl_reflect";
 
 export interface WgslBinding {
     id: string;
@@ -8,6 +8,7 @@ export interface WgslBinding {
     index: number;
     name: string;
     type: TypeInfo;
+    attributes: Attribute[] | null;
     writable: boolean;
     resourceType: ResourceType;
     input: string;

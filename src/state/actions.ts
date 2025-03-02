@@ -3,7 +3,7 @@ import { assertNever, noop, range } from "../frontend-utils/general/data";
 import { parseWGSL } from "../utilities/parseWGSL";
 import { runWGSLFunction } from "../utilities/runner";
 import { RunnableComputeShader, RunnableFunction, RunnableRender } from "../utilities/types";
-import { getDefaultValue } from "../utilities/values";
+import { getDefaultValue, getDefaultValueForType } from "../utilities/values";
 import { AppActions, AppRunningState, AppState } from "./types";
 
 export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi<AppState>["getState"]): AppActions => {
@@ -82,8 +82,8 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
                     state.bindings.find((b) => b.name === binding.name);
                 if (oldBinding === undefined) continue;
 
-                const newDefault = getDefaultValue(binding.type, result.structs);
-                const oldDefault = getDefaultValue(oldBinding.type, state.structs);
+                const newDefault = getDefaultValue(binding, wgsl, result.structs);
+                const oldDefault = getDefaultValue(oldBinding, state.wgsl, state.structs);
                 if (
                     newDefault.type === "values" &&
                     oldDefault.type === "values" &&
@@ -120,8 +120,8 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
                         (state.selected as RunnableFunction).arguments[idx];
                     if (oldArg === undefined) continue;
 
-                    const newDefault = getDefaultValue(arg.type, result.structs);
-                    const oldDefault = getDefaultValue(oldArg.type, state.structs);
+                    const newDefault = getDefaultValueForType(arg.type, result.structs);
+                    const oldDefault = getDefaultValueForType(oldArg.type, state.structs);
                     if (
                         newDefault.type === "values" &&
                         oldDefault.type === "values" &&

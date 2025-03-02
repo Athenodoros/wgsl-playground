@@ -12,7 +12,7 @@ import {
     RunnerResults,
     WgslBinding,
 } from "./types";
-import { getDefaultValue, parseBufferForType, parseValueForType } from "./values";
+import { getDefaultValueForType, parseBufferForType, parseValueForType } from "./values";
 
 const STUB_FUNCTION_RUNNER_OUTPUT_BINDING_ID = "stub_function_runner_output";
 const STUB_FUNCTION_RUNNER_NAME = "_wgsl_playground_function_runner__";
@@ -331,13 +331,13 @@ fn ${STUB_FUNCTION_RUNNER_NAME}() {
     const inputBindingType = reflect.reflect.structs.find((s) => s.name === "WGSLPlaygroundFunctionInputsStruct");
     if (inputBindingType === undefined) return { type: "error", error: "Could not find input binding type" };
 
-    const inputBindingValue = getDefaultValue(inputBindingType, reflect.reflect.structs);
+    const inputBindingValue = getDefaultValueForType(inputBindingType, reflect.reflect.structs);
     if (inputBindingValue.type === "error") return inputBindingValue;
     const inputBindingBuffer = parseValueForType(inputBindingType, reflect.reflect.structs, inputBindingValue.value);
     if (inputBindingBuffer === null) return { type: "error", error: "Could not parse default value for input binding" };
 
     const outputBindingType = runnable.output ?? new TypeInfo("i32", null);
-    const outputBindingValue = getDefaultValue(outputBindingType, reflect.reflect.structs);
+    const outputBindingValue = getDefaultValueForType(outputBindingType, reflect.reflect.structs);
     if (outputBindingValue.type === "error") return outputBindingValue;
     const outputBindingBuffer = parseValueForType(outputBindingType, reflect.reflect.structs, outputBindingValue.value);
     if (outputBindingBuffer === null)
@@ -352,6 +352,7 @@ fn ${STUB_FUNCTION_RUNNER_NAME}() {
             index: 0,
             name: "inputs",
             type: inputBindingType,
+            attributes: null,
             input: inputBindingValue.value,
             buffer: inputBindingBuffer,
         },
@@ -363,6 +364,7 @@ fn ${STUB_FUNCTION_RUNNER_NAME}() {
             index: 1,
             name: "output",
             type: outputBindingType,
+            attributes: null,
             input: outputBindingValue.value,
             buffer: outputBindingBuffer,
         },

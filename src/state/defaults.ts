@@ -34,9 +34,9 @@ fn create_colour(colour: vec3f) -> vec4f {
 }
 `;
 
-export const DEFAULT_COMPUTE_SHADER: string = `@group(0) @binding(0) var<storage, read> input_array: array<i32>;
-@group(0) @binding(1) var<storage, read_write> cumulative_counts: array<i32>;
-@group(0) @binding(2) var<storage, read_write> total_sum: i32;
+export const DEFAULT_COMPUTE_SHADER: string = `@group(0) @binding(0) var<storage, read> input_array: array<i32>; // rand(0, 100)
+@group(0) @binding(1) var<storage, read_write> cumulative_offsets: array<i32>; // 0
+@group(0) @binding(2) var<storage, read_write> total_sum: i32; // 0
 
 const workgroup_length : u32 = 128;
 var<workgroup> workgroup_counts: array<i32, workgroup_length>;
@@ -69,7 +69,7 @@ fn get_counts(@builtin(global_invocation_id) GlobalInvocationID: vec3<u32>) {
     // Fill cumulative counts for this thread's range
     var running_total = offset;
     for (var i = start; i < end; i++) {
-        cumulative_counts[i] = running_total;
+        cumulative_offsets[i] = running_total;
         running_total += input_array[i];
     }
 

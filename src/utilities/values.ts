@@ -1,5 +1,6 @@
-import { ArrayInfo, StructInfo, TemplateInfo, TypeInfo } from "wgsl_reflect";
+import { ArrayInfo, StructInfo, TemplateInfo, TypeInfo, VariableInfo } from "wgsl_reflect";
 import { range, repeat } from "../frontend-utils/general/data";
+import { WgslBinding } from "./types";
 
 export const getTypeDisplay = (type: TypeInfo): string => {
     if (type.name === "array") {
@@ -120,11 +121,26 @@ const getBufferSpec = (type: TypeInfo, structs: StructInfo[]): BufferSpec | null
     return { lines: range(rows).map(() => repeat([rawType as BufferComponent], columns)), repeat: false };
 };
 
-const getArrayLine = (line: BufferComponent[], addComma: boolean) =>
-    line.map((c) => ({ f32: "1.0", u32: "1", i32: "1", padding: "null" }[c])).join(", ") + (addComma ? "," : "");
+const getArrayLine = (line: BufferComponent[], addComma: boolean, getDefaultValue: () => number) =>
+    line
+        .map(
+            (c) =>
+                ({
+                    f32: getDefaultValue().toFixed(1),
+                    u32: getDefaultValue().toFixed(0),
+                    i32: getDefaultValue().toFixed(0),
+                    padding: "null",
+                }[c])
+        )
+        .join(", ") + (addComma ? "," : "");
 
 type DefaultValueReturn = { type: "error"; error: string } | { type: "values"; value: string };
-export const getDefaultValue = (type: TypeInfo, structs: StructInfo[]): DefaultValueReturn => {
+
+export const getDefaultValueForType = (
+    type: TypeInfo,
+    structs: StructInfo[],
+    getDefaultValue: () => number = () => 1
+): DefaultValueReturn => {
     if (["f16", "bool"].includes(type.name))
         return { type: "error", error: `${type.name} not supported due to limited browser support` };
     if (
@@ -163,7 +179,7 @@ export const getDefaultValue = (type: TypeInfo, structs: StructInfo[]): DefaultV
 
             return [
                 `// ${member.name}: ${getTypeDisplay(member.type)}${padding ? ` (+${padding} bytes padding)` : ""}`,
-                getArrayLine(line, idx !== struct.members.length - 1),
+                getArrayLine(line, idx !== struct.members.length - 1, getDefaultValue),
             ];
         });
 
@@ -176,21 +192,60 @@ export const getDefaultValue = (type: TypeInfo, structs: StructInfo[]): DefaultV
 
         const value =
             lines[0].length === 1
-                ? "[ " + lines.map((v) => getArrayLine(v, false)).join(", ") + " ]"
-                : "[\n" + lines.map((v) => "    " + getArrayLine(v, false)).join(",\n") + "\n]";
+                ? "[ " + lines.map((v) => getArrayLine(v, false, getDefaultValue)).join(", ") + " ]"
+                : "[\n" + lines.map((v) => "    " + getArrayLine(v, false, getDefaultValue)).join(",\n") + "\n]";
 
         return { type: "values", value: value };
     }
 
     if (spec.lines.length === 1) {
-        const line = getArrayLine(spec.lines[0], false);
+        const line = getArrayLine(spec.lines[0], false, getDefaultValue);
         return { type: "values", value: spec.lines[0].length === 1 ? line : `[ ${line} ]` };
     }
 
     return {
         type: "values",
-        value: `[${spec.lines.map((c) => "    " + getArrayLine(c, false)).join(",\n")}]`,
+        value: `[${spec.lines.map((c) => "    " + getArrayLine(c, false, getDefaultValue)).join(",\n")}]`,
     };
+};
+
+export const getDefaultValue = (
+    binding: WgslBinding | VariableInfo,
+    wgsl: string,
+    structs: StructInfo[]
+): DefaultValueReturn => {
+    const codeLines = wgsl.split("\n");
+
+    const spec =
+        binding.attributes
+            ?.map((a) => {
+                const line = a.line - 1;
+                const comment = codeLines[line].match(/\/\/(.*)/)?.[1]?.trim();
+                if (!comment) return null;
+                if (!isNaN(Number(comment))) return () => Number(comment);
+
+                const functionCall = comment.match(/^(\w+)\((.*)\)$/);
+                if (functionCall === null) return null;
+
+                const [_, functionName, rawArgs] = functionCall;
+                const args = rawArgs
+                    .split(",")
+                    .map((a) => a.trim())
+                    .filter((a) => a);
+
+                if (functionName === "rand") {
+                    if (args.length !== 2) return null;
+                    const [min, max] = args.map((a) => Number(a));
+                    if (isNaN(min) || isNaN(max)) return null;
+
+                    return () => Math.random() * (max - min) + min;
+                }
+
+                return null;
+            })
+            ?.find((c) => c !== null) ?? null;
+
+    return getDefaultValueForType(binding.type, structs, spec ?? (() => 1));
 };
 
 export const parseValueForType = (type: TypeInfo, structs: StructInfo[], value: string): ArrayBuffer | null => {
