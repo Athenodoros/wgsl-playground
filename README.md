@@ -6,4 +6,4 @@ This is a simple webapp for experimenting with [WGSL](https://www.w3.org/TR/WGSL
 
 It is hosted on GitHub Pages here: https://athenodoros.github.io/wgsl-playground/
 
-Sometimes I like to write [little projects](https://github.com/Athenodoros/Chasers) in WGSL, and have been frustrated by the iteration cycle for testing small functions and syntax. If you've seen that problem before - maybe this could be useful for you too!
+Sometimes I like to write [little projects](https://github.com/Athenodoros/Chasers) in WGSL, and have been frustrated by the iteration cycle for testing small functions and syntax. If you've had that problem - maybe this could be useful for you too!
