@@ -15,11 +15,13 @@ export const StructDisplay: React.FC = () => {
             disabled={structs.length === 0}
             startClosed={false}
         >
-            <SectionCard padded={true}>
-                {structs.map((s) => (
-                    <SingleStructDisplay key={s.name} struct={s} />
-                ))}
-            </SectionCard>
+            {structs.length ? (
+                <SectionCard padded={true}>
+                    {structs.map((s) => (
+                        <SingleStructDisplay key={s.name} struct={s} />
+                    ))}
+                </SectionCard>
+            ) : null}
         </RightSection>
     );
 };

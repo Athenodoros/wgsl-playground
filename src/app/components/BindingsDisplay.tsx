@@ -16,13 +16,15 @@ export const BindingsDisplay: React.FC = () => {
             disabled={bindings.length === 0}
             startClosed={false}
         >
-            <SectionCard padded={false} className="my-4">
-                <div className="flex flex-col gap-4">
-                    {bindings.map((binding, index) => (
-                        <InnerBindingDisplay key={index} binding={binding} />
-                    ))}
-                </div>
-            </SectionCard>
+            {bindings.length ? (
+                <SectionCard padded={false} className="my-4">
+                    <div className="flex flex-col gap-4">
+                        {bindings.map((binding, index) => (
+                            <InnerBindingDisplay key={index} binding={binding} />
+                        ))}
+                    </div>
+                </SectionCard>
+            ) : null}
         </RightSection>
     );
 };

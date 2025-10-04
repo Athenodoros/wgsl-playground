@@ -17,8 +17,7 @@ export const RunnableOutputs: React.FC = () => {
                 <NonIdealState
                     icon="th-disconnect"
                     title="WebGPU Not Available"
-                    description="WebGPU is not available in your browser. Please try Chrome, or Firefox Nightly."
-                    className="my-16"
+                    description="WebGPU is not available in your browser. Please try Chrome or Firefox Nightly."
                 />
             </SectionCard>
         );
@@ -28,12 +27,7 @@ export const RunnableOutputs: React.FC = () => {
         return (
             <SectionCard padded={true}>
                 <OutputCanvas hidden={true} />
-                <NonIdealState
-                    icon="bug"
-                    title="Parsing Error"
-                    description={<pre>{parseError}</pre>}
-                    className="my-16"
-                />
+                <NonIdealState icon="bug" title="Parsing Error" description={<pre>{parseError}</pre>} />
             </SectionCard>
         );
     }
