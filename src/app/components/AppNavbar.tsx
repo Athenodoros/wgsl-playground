@@ -74,10 +74,17 @@ const HelpNavbarButton: React.FC = () => {
                             </pre>
                             <p className="my-3">
                                 A comma-separated list fills the binding's fields in order, repeating from the start if
-                                the binding has more fields than the list has values:
+                                the binding has more fields than the list has entries:
                             </p>
                             <pre className="bg-slate-100 rounded p-3 overflow-x-auto text-xs">
                                 <code>{`@group(0) @binding(2) var<uniform> light: Light; // 0.5, 0.5, 0.0, 1.0`}</code>
+                            </pre>
+                            <p className="my-3">
+                                Numbers and <code>rand</code> can be mixed in one list. Each repetition draws new random
+                                values, so this fills every third field with a fresh one:
+                            </p>
+                            <pre className="bg-slate-100 rounded p-3 overflow-x-auto text-xs">
+                                <code>{`@group(0) @binding(3) var<storage, read> jitter: array<f32>; // rand(-1, 1), 0, 0`}</code>
                             </pre>
                             <p className="mt-3">Bindings without a default-value comment are initialized to 1.</p>
                         </section>
