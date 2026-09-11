@@ -113,6 +113,6 @@ const NumericInputWrapper: React.FC<NumericInputProps> = ({ ...props }) => (
         allowNumericCharactersOnly={true}
         buttonPosition="none"
         {...props}
-        className={`[&>.bp5-input-group]:!w-20 ${props.className ?? ""}`}
+        className={`[&>.bp6-input-group]:!w-20 ${props.className ?? ""}`}
     />
 );

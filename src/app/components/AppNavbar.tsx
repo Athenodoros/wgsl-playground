@@ -2,7 +2,7 @@ import { AnchorButton, Button, Classes, Drawer, Navbar } from "@blueprintjs/core
 import { useState } from "react";
 
 export const AppNavbar: React.FC = () => (
-    <Navbar fixedToTop={true} className="bp5-dark z-10">
+    <Navbar fixedToTop={true} className={`${Classes.DARK} z-10`}>
         <Navbar.Group align="left">
             <Navbar.Heading>WGSL Playground</Navbar.Heading>
         </Navbar.Group>
@@ -39,7 +39,7 @@ const HelpNavbarButton: React.FC = () => {
                 onClick={() => setInstructionsOpen(true)}
             />
             <Drawer
-                className="[&>.bp5-drawer-header]:!min-h-[50px]"
+                className="[&>.bp6-drawer-header]:!min-h-[50px]"
                 icon="help"
                 isOpen={instructionsOpen}
                 onClose={() => setInstructionsOpen(false)}
