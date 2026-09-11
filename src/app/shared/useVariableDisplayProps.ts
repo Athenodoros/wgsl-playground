@@ -4,7 +4,7 @@ import { WGSLType } from "../../utilities/WGSLType";
 export const useVariableDisplayProps = (
     input: string,
     onUpdate: (value: string, output: ArrayBuffer) => void,
-    type: WGSLType
+    type: WGSLType,
 ) => {
     const [localValue, setLocalValue] = useState(input);
     const [prevInput, setPrevInput] = useState(input);
@@ -27,7 +27,7 @@ export const useVariableDisplayProps = (
                 onUpdate(value, output);
             }
         },
-        [type, onUpdate]
+        [type, onUpdate],
     );
 
     return { value: localValue, isError: error, onChange: handleChange };

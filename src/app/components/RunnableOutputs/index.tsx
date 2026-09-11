@@ -15,7 +15,7 @@ export const RunnableOutputs: React.FC = () => {
     const drawsToCanvas = useAppState(
         (state) =>
             state.selected?.type === "render" ||
-            (state.selected?.type === "compute" && state.bindings.some((binding) => binding.kind === "texture"))
+            (state.selected?.type === "compute" && state.bindings.some((binding) => binding.kind === "texture")),
     );
 
     if (device === null) {
@@ -58,30 +58,30 @@ export const RunnableOutputs: React.FC = () => {
                       </div>
                   ))
                 : results?.type === "outputs"
-                ? results.bindings
-                      .map((result) => (
-                          <BindingDisplay
-                              key={result.binding.id}
-                              binding={result.binding}
-                              value={result.value}
-                              isError={false}
-                          />
-                      ))
-                      .concat(
-                          results.returned && output?.type === "function" && output.output
-                              ? [
-                                    <VariableDisplay
-                                        key="function-output"
-                                        title="Function Output"
-                                        subtitle={output.name}
-                                        type={output.output}
-                                        value={results.returned.value}
-                                        isError={false}
-                                    />,
-                                ]
-                              : []
-                      )
-                : null}
+                  ? results.bindings
+                        .map((result) => (
+                            <BindingDisplay
+                                key={result.binding.id}
+                                binding={result.binding}
+                                value={result.value}
+                                isError={false}
+                            />
+                        ))
+                        .concat(
+                            results.returned && output?.type === "function" && output.output
+                                ? [
+                                      <VariableDisplay
+                                          key="function-output"
+                                          title="Function Output"
+                                          subtitle={output.name}
+                                          type={output.output}
+                                          value={results.returned.value}
+                                          isError={false}
+                                      />,
+                                  ]
+                                : [],
+                        )
+                  : null}
         </SectionCard>
     );
 };

@@ -29,7 +29,13 @@ const tokenize = (input: string): Token[] | string => {
     while (TOKEN_PATTERN.lastIndex < raw.length) {
         const start = TOKEN_PATTERN.lastIndex;
         const match = TOKEN_PATTERN.exec(raw);
-        if (match === null) return `unexpected \`${raw.slice(start).trim().match(/^[^\s(),*]*/)?.[0]}\``;
+        if (match === null)
+            return `unexpected \`${
+                raw
+                    .slice(start)
+                    .trim()
+                    .match(/^[^\s(),*]*/)?.[0]
+            }\``;
 
         const [, rand, number, symbol] = match;
         if (rand !== undefined) tokens.push({ type: "rand" });
@@ -45,7 +51,9 @@ const tokenize = (input: string): Token[] | string => {
  * useful: the caller warns on a comment that was meant as a directive and failed, and stays quiet
  * about one that was never a directive at all.
  */
-export const parseDirective = (comment: string): { type: "directive"; items: DirectiveNode[] } | { type: "error"; error: string } => {
+export const parseDirective = (
+    comment: string,
+): { type: "directive"; items: DirectiveNode[] } | { type: "error"; error: string } => {
     const tokens = tokenize(comment);
     if (typeof tokens === "string") return { type: "error", error: tokens };
     if (tokens.length === 0) return { type: "error", error: "empty directive" };
@@ -123,4 +131,3 @@ export const parseDirective = (comment: string): { type: "directive"; items: Dir
 
     return { type: "directive", items };
 };
-

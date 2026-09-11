@@ -25,12 +25,14 @@ export const runWGSLFunction = async (
     wgsl: string,
     runnable: Runnable,
     bindings: WgslBinding[],
-    canvas: HTMLCanvasElement
+    canvas: HTMLCanvasElement,
 ): Promise<RunnerResults> => {
     if (
         bindings.some(
             (b) =>
-                b.kind === "buffer" && b.resourceType !== ResourceType.Uniform && b.resourceType !== ResourceType.Storage
+                b.kind === "buffer" &&
+                b.resourceType !== ResourceType.Uniform &&
+                b.resourceType !== ResourceType.Storage,
         )
     )
         throw new Error("Unsupported resource type");
@@ -49,7 +51,7 @@ const runSimpleFunction = async (
     device: GPUDevice,
     wgsl: string,
     runnable: RunnableFunction,
-    bindings: WgslBinding[]
+    bindings: WgslBinding[],
 ): Promise<RunnerResults> => {
     const runner = getCodeRunnerForFunction(runnable, bindings, wgsl);
     if (runner.type === "error") return { type: "errors", errors: [formatRuntimeError(new Error(runner.error))] };
@@ -67,7 +69,7 @@ const runRenderShader = async (
     wgsl: string,
     runnable: RunnableRender,
     bindings: WgslBinding[],
-    canvas: HTMLCanvasElement
+    canvas: HTMLCanvasElement,
 ): Promise<RunnerResults> => {
     const { bindGroups, pipelineLayout, textures } = getBindingResources(bindings, device, GPUShaderStage.FRAGMENT);
     const module = device.createShaderModule({ code: wgsl });
@@ -143,7 +145,7 @@ const runComputeShader = async (
     wgsl: string,
     runnable: RunnableComputeShader,
     bindings: WgslBinding[],
-    canvas: HTMLCanvasElement
+    canvas: HTMLCanvasElement,
 ): Promise<RunnerResults> => {
     const module = device.createShaderModule({ code: wgsl });
     const { buffers, textures } = runComputeModule(device, module, bindings, runnable.name, runnable.threads);
@@ -153,7 +155,7 @@ const runComputeShader = async (
     const promises = bindings
         .filter((binding): binding is WgslBufferBinding => binding.kind === "buffer" && binding.writable)
         .map((binding) =>
-            readBufferValue(device, buffers[binding.id], binding.type).then((value) => ({ binding, value }))
+            readBufferValue(device, buffers[binding.id], binding.type).then((value) => ({ binding, value })),
         );
 
     // There is one canvas, so the first storage texture is the one drawn on it. Nothing in the
@@ -220,7 +222,7 @@ const blitTextureToCanvas = (
     device: GPUDevice,
     context: GPUCanvasContext,
     texture: GPUTexture,
-    format: StorageTextureFormat
+    format: StorageTextureFormat,
 ) => {
     context.configure({
         device,
@@ -254,7 +256,7 @@ const blitTextureToCanvas = (
     renderpass.setPipeline(pipeline);
     renderpass.setBindGroup(
         0,
-        device.createBindGroup({ layout: bindGroupLayout, entries: [{ binding: 0, resource: texture.createView() }] })
+        device.createBindGroup({ layout: bindGroupLayout, entries: [{ binding: 0, resource: texture.createView() }] }),
     );
     renderpass.draw(3, 1, 0, 0);
     renderpass.end();
@@ -272,7 +274,7 @@ const blitTextureToCanvas = (
 const readTextureValues = async (
     device: GPUDevice,
     texture: GPUTexture,
-    canvas: HTMLCanvasElement
+    canvas: HTMLCanvasElement,
 ): Promise<RunnerResultsTextureReader> => {
     const bytesPerRow = Math.ceil((texture.width * 4) / 256) * 256;
     const buffer = device.createBuffer({
@@ -284,7 +286,7 @@ const readTextureValues = async (
     commandEncoder.copyTextureToBuffer(
         { texture },
         { buffer, bytesPerRow },
-        { width: texture.width, height: texture.height }
+        { width: texture.width, height: texture.height },
     );
     device.queue.submit([commandEncoder.finish()]);
 
@@ -297,9 +299,9 @@ const readTextureValues = async (
                     number,
                     number,
                     number,
-                    number
-                ]
-        )
+                    number,
+                ],
+        ),
     );
 
     buffer.unmap();
@@ -329,8 +331,8 @@ const getBindingResources = (bindings: WgslBinding[], device: GPUDevice, visibil
                         binding.resourceType === ResourceType.Uniform
                             ? "uniform"
                             : binding.writable
-                            ? "storage"
-                            : "read-only-storage";
+                              ? "storage"
+                              : "read-only-storage";
 
                     return {
                         binding: binding.index,
@@ -338,7 +340,7 @@ const getBindingResources = (bindings: WgslBinding[], device: GPUDevice, visibil
                         buffer: { type: buffer },
                     };
                 }),
-        })
+        }),
     );
     const pipelineLayout = device.createPipelineLayout({ bindGroupLayouts });
 
@@ -386,7 +388,7 @@ const maybeReturnResults = async (
     device: GPUDevice,
     module: GPUShaderModule,
     returned: FunctionOutput | null,
-    getTextureValue?: (row: number, column: number) => [number, number, number, number] | null
+    getTextureValue?: (row: number, column: number) => [number, number, number, number] | null,
 ): Promise<RunnerResults> => {
     const error = await device.popErrorScope();
     const compilation = await module.getCompilationInfo();
@@ -429,7 +431,7 @@ const formatRuntimeError = (error: GPUError): RunnerResultError => ({
 const getCodeRunnerForFunction = (
     runnable: RunnableFunction,
     originalBindings: WgslBinding[],
-    wgsl: string
+    wgsl: string,
 ):
     | { type: "code"; code: string; bindings: WgslBinding[]; outputBindingType: WGSLType }
     | { type: "error"; error: string } => {
@@ -499,7 +501,7 @@ fn ${STUB_FUNCTION_RUNNER_NAME}() {
 
     const outputBindingType = new WGSLType(
         reflect.reflect.getBindGroups()[newGroupId][1].type,
-        reflect.reflect.structs
+        reflect.reflect.structs,
     );
     const outputBindingValue = outputBindingType.getDefaultValue();
     if (outputBindingValue.type === "error") return outputBindingValue;
@@ -548,12 +550,12 @@ const runComputeModule = (
     module: GPUShaderModule,
     bindings: WgslBinding[],
     name: string,
-    threads: [number, number, number]
+    threads: [number, number, number],
 ) => {
     const { buffers, textures, bindGroups, pipelineLayout } = getBindingResources(
         bindings,
         device,
-        GPUShaderStage.COMPUTE
+        GPUShaderStage.COMPUTE,
     );
     const pipeline = device.createComputePipeline({
         label: `Runner for ${name}`,

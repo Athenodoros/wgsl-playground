@@ -50,7 +50,7 @@ export async function maxByAsync<T>(
     ...metrics: ((t: T) => Promise<any | null | undefined>)[]
 ): Promise<T | null> {
     const values = await Promise.all(
-        array.map((value) => Promise.all(metrics.map(async (metric) => await metric(value))))
+        array.map((value) => Promise.all(metrics.map(async (metric) => await metric(value)))),
     );
     const indices = array.map((_, idx) => idx);
 
@@ -133,6 +133,5 @@ export const pick = <T extends object, K extends keyof T>(obj: T, keys: K[]) =>
 export const omit = <T extends object, K extends keyof T>(obj: T, keys: K[]) =>
     fromKeys(
         Object.keys(obj).filter((key) => !keys.includes(key as K)),
-        (key) => (obj as Record<string, unknown>)[key]
+        (key) => (obj as Record<string, unknown>)[key],
     ) as Omit<T, K>;
-

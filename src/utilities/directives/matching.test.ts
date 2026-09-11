@@ -75,14 +75,16 @@ describe("nesting must be written with parentheses", () => {
     });
 
     it("never reads a flat list as nested - six values is six elements, each broadcast", () => {
-        expect(match("1, 2, 3, 4, 5, 6", ARRAY_OF_VEC3)).toEqual([1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6]);
+        expect(match("1, 2, 3, 4, 5, 6", ARRAY_OF_VEC3)).toEqual([
+            1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6,
+        ]);
         expect(lengthOf("1, 2, 3, 4, 5, 6", ARRAY_OF_VEC3)).toBe(6);
     });
 
     it("rejects a flat list where the nesting is not optional", () => {
         expect(match("1, 2, 3, 4, 5", MIXED, MIXED_STRUCT)).toMatch(/has 3 components, but the directive gives 5/);
         expect(match("1, 2, 3, 4, 5, 6", "@group(0) @binding(0) var<uniform> binding: array<vec3<f32>, 2>;")).toMatch(
-            /has 2 elements, but the directive gives 6/
+            /has 2 elements, but the directive gives 6/,
         );
     });
 
@@ -109,7 +111,7 @@ describe("repetition", () => {
 
     it("rejects a struct's members flattened into one list", () => {
         expect(match("4 * (150, 110, 0.12, 1)", SOURCE_ARRAY, SOURCE_STRUCT)).toMatch(
-            /Source has 3 components, but the directive gives 4/
+            /Source has 3 components, but the directive gives 4/,
         );
     });
 
@@ -201,7 +203,7 @@ describe("one group fills an array of known length", () => {
 
     it("agrees with spelling the repetition out", () => {
         expect(match("((150, 110), 0.12, 1)", SOURCE_ARRAY, SOURCE_STRUCT)).toEqual(
-            match("4 * ((150, 110), 0.12, 1)", SOURCE_ARRAY, SOURCE_STRUCT)
+            match("4 * ((150, 110), 0.12, 1)", SOURCE_ARRAY, SOURCE_STRUCT),
         );
     });
 
@@ -224,7 +226,7 @@ describe("one group fills an array of known length", () => {
 
     it("still rejects a group that does not fit the element", () => {
         expect(match("(150, 110, 0.12, 1)", SOURCE_ARRAY, SOURCE_STRUCT)).toMatch(
-            /Source has 3 components, but the directive gives 4/
+            /Source has 3 components, but the directive gives 4/,
         );
     });
 });

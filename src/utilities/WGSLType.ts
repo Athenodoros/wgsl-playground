@@ -7,12 +7,15 @@ import { getDirectiveSource, getTypeShape, matchDirective } from "./directives";
 export const DEFAULT_RUNTIME_ARRAY_LENGTH = 6;
 
 export class WGSLType {
-    constructor(private type: TypeInfo, private structs: StructInfo[]) {}
+    constructor(
+        private type: TypeInfo,
+        private structs: StructInfo[],
+    ) {}
 
     getDisplay = () => getTypeDisplay(this.type);
     getDefaultValue = (
         getDefaultValue: () => number = () => 1,
-        runtimeArrayLength: number = DEFAULT_RUNTIME_ARRAY_LENGTH
+        runtimeArrayLength: number = DEFAULT_RUNTIME_ARRAY_LENGTH,
     ) => getDefaultValueForType(this.type, this.structs, getDefaultValue, runtimeArrayLength);
     getShape = () => getTypeShape(this.type, this.structs);
     getDefaultValueForAttributes = (attributes: WgslBinding["attributes"], wgsl: string) =>
@@ -120,8 +123,8 @@ const getBufferSpec = (type: TypeInfo, structs: StructInfo[]): BufferSpec | null
     const columns = type.name.startsWith("vec")
         ? Number(type.name[3])
         : type.name.startsWith("mat")
-        ? Number(type.name[3])
-        : null;
+          ? Number(type.name[3])
+          : null;
     if (!columns) {
         // console.log(`Unrecognised type: ${type.name}`);
         return null;
@@ -167,19 +170,17 @@ const getArrayLine = (line: BufferComponent[], addComma: boolean, getDefaultValu
                 u32: () => getDefaultValue().toFixed(0),
                 i32: () => getDefaultValue().toFixed(0),
                 padding: () => "null",
-            }[c]())
+            })[c](),
         )
         .join(", ") + (addComma ? "," : "");
 
-type DefaultValueReturn =
-    | { type: "error"; error: string }
-    | { type: "values"; value: string; warning?: string };
+type DefaultValueReturn = { type: "error"; error: string } | { type: "values"; value: string; warning?: string };
 
 const getDefaultValueForType = (
     type: TypeInfo,
     structs: StructInfo[],
     getDefaultValue: () => number = () => 1,
-    runtimeArrayLength: number = DEFAULT_RUNTIME_ARRAY_LENGTH
+    runtimeArrayLength: number = DEFAULT_RUNTIME_ARRAY_LENGTH,
 ): DefaultValueReturn => {
     if (["f16", "bool"].includes(type.name))
         return { type: "error", error: `${type.name} not supported due to limited browser support` };
@@ -252,7 +253,7 @@ const getDefaultValueForType = (
 const getDefaultValueForAttributes = (
     type: WGSLType,
     attributes: WgslBinding["attributes"],
-    wgsl: string
+    wgsl: string,
 ): DefaultValueReturn => {
     const comment = getDirectiveSource(attributes, wgsl);
     if (comment === null) return type.getDefaultValue();
@@ -271,10 +272,7 @@ const getDefaultValueForAttributes = (
     }
 
     let index = 0;
-    return type.getDefaultValue(
-        () => match.values[index++] ?? 1,
-        match.runtimeLength ?? DEFAULT_RUNTIME_ARRAY_LENGTH
-    );
+    return type.getDefaultValue(() => match.values[index++] ?? 1, match.runtimeLength ?? DEFAULT_RUNTIME_ARRAY_LENGTH);
 };
 
 const getStringParseResults = (type: TypeInfo, structs: StructInfo[], value: string) => {

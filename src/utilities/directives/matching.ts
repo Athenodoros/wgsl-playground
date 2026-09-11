@@ -35,8 +35,7 @@ export const getDirectiveSource = (attributes: Attribute[] | null, wgsl: string)
 };
 
 export type DirectiveMatch =
-    | { type: "values"; values: number[]; runtimeLength: number | null }
-    | { type: "error"; error: string };
+    { type: "values"; values: number[]; runtimeLength: number | null } | { type: "error"; error: string };
 
 const isSingleValue = (node: DirectiveNode): node is Extract<DirectiveNode, { type: "value" | "rand" }> =>
     node.type === "value" || node.type === "rand";

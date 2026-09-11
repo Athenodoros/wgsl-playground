@@ -68,4 +68,3 @@ const getShapeLabel = (type: TypeInfo): string => {
 
     return type.name;
 };
-
