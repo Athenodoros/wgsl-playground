@@ -1,4 +1,4 @@
-import { SectionCard } from "@blueprintjs/core";
+import { Callout, SectionCard } from "@blueprintjs/core";
 import React, { useCallback } from "react";
 import { useAppState } from "../../state";
 import { WgslBinding } from "../../utilities/types";
@@ -40,5 +40,16 @@ const InnerBindingDisplay: React.FC<{ binding: WgslBinding }> = ({ binding }) =>
 
     const props = useVariableDisplayProps(binding.input, handleChange, binding.type);
 
-    return <BindingDisplay binding={binding} {...props} readOnly={readOnly} />;
+    return (
+        <div className="flex flex-col gap-2">
+            <BindingDisplay binding={binding} {...props} readOnly={readOnly} />
+            {binding.warning ? (
+                <div className="mx-4">
+                    <Callout intent="warning" icon="warning-sign" compact={true}>
+                        {binding.warning}
+                    </Callout>
+                </div>
+            ) : null}
+        </div>
+    );
 };
