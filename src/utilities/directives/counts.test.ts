@@ -54,3 +54,18 @@ describe("vertex counts", () => {
         expect(counts("rand(3, 9)", 1)).toMatch(/`rand` cannot set one/);
     });
 });
+
+describe("texture sizes", () => {
+    it("reads a width and a height", () => expect(counts("640, 360", 2)).toEqual([640, 360]));
+
+    it("calls the dimensions whatever the caller calls them", () => {
+        expect(matchDirectiveCounts("640, 0", 2, "size")).toEqual({
+            type: "error",
+            error: "a size has to be a whole number of at least 1, but got 0",
+        });
+        expect(matchDirectiveCounts("640, 0", 2)).toEqual({
+            type: "error",
+            error: "a count has to be a whole number of at least 1, but got 0",
+        });
+    });
+});

@@ -9,11 +9,13 @@ import { TypeShape } from "./typeShape";
  *     @group(0) @binding(0) var<storage, read_write> output: array<i32>; // 6 * 0
  *     @group(0) @binding(1) var<storage, read> input: array<f32>;        // 6 * rand(-1, 1)
  *     @group(0) @binding(2) var<uniform> light: Light;                   // (0.5, 0.5, 0.0), 1.0
- *     @group(0) @binding(3) var<uniform> sources: array<Source, 4>;      // 4 * (150, 110, 0.12)
+ *     @group(0) @binding(3) var<uniform> sources: array<Source, 4>;      // ((150, 110), 0.12, 1)
  *
  * A directive has to match the shape of the type it fills, and nothing is guessed: one that does
- * not match is reported rather than stretched to fit. The single liberty is that one value fills
- * everything beneath it, so `// 0` still works whatever the type turns out to be.
+ * not match is reported rather than stretched to fit. The liberties are both about writing one
+ * thing where many would fit: a single value fills everything beneath it, so `// 0` works whatever
+ * the type turns out to be, and a single group fills every element of an array of known length, as
+ * the sources above do.
  */
 
 /**
@@ -101,6 +103,15 @@ export const matchDirective = (comment: string, shape: TypeShape): DirectiveMatc
             // One value fills everything below it, and one repetition describes the whole array.
             if (isSingleValue(items[0])) return broadcast(items[0], target);
             if (items[0].type === "repeat") return matchNode(items[0], target);
+
+            // One group fills every element of an array that already knows how long it is, so
+            // `((0, 0), 1)` describes every element of an array<Source, 4> without counting them
+            // out. A runtime-sized array is the exception: nothing but the directive says how long
+            // it is, so a group there is one element rather than a pattern for all of them.
+            if (target.kind === "array" && target.count !== null) {
+                for (let index = 0; index < target.count; index++) matchNode(items[0], target.element);
+                return;
+            }
         }
 
         if (target.kind === "scalar") {

@@ -23,6 +23,14 @@ export class WGSLType {
 }
 
 export const getTypeDisplay = (type: TypeInfo): string => {
+    // Textures and samplers carry their format and access mode in the template, and without them the
+    // display says almost nothing - `texture_storage_2d` alone does not tell you what it holds.
+    if (type.name.startsWith("texture_storage")) {
+        const textureType = type as TemplateInfo;
+        if (!textureType.format) return type.name;
+        return `${type.name}<${getTypeDisplay(textureType.format)}, ${textureType.access}>`;
+    }
+
     if (type.name === "array") {
         const arrayType = type as ArrayInfo;
         return arrayType.count

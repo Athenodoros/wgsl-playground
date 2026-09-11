@@ -89,8 +89,14 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
                 console.error(`Binding ${id} not found`);
                 return;
             }
+            if (binding.kind !== "buffer") {
+                console.error(`Binding ${id} has no value to set`);
+                return;
+            }
 
-            const bindings = state.bindings.map((b) => (b.id === id ? { ...b, input, buffer } : b));
+            const bindings = state.bindings.map((b) =>
+                b.id === id && b.kind === "buffer" ? { ...b, input, buffer } : b
+            );
             if (state.type === "failed-parse") set({ ...state, bindings }, true);
             else startGPUProcessing({ ...state, type: "running", bindings });
         },
@@ -134,6 +140,10 @@ const updateParseResultsFromPrevious = (
         const oldBinding =
             state.bindings.find((b) => b.id === binding.id) ?? state.bindings.find((b) => b.name === binding.name);
         if (oldBinding === undefined) continue;
+
+        // A storage texture has no value to carry across: everything about it, size included, comes
+        // from the code that was just re-read.
+        if (binding.kind !== "buffer" || oldBinding.kind !== "buffer") continue;
 
         // Values the user set by hand are kept across an edit, but only while both the binding's
         // shape and the directive comment behind it are unchanged. Comparing generated values alone

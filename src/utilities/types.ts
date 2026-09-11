@@ -1,27 +1,46 @@
 import { IconName, Intent } from "@blueprintjs/core";
 import { ReactNode } from "react";
 import { Attribute, ResourceType, StructInfo } from "wgsl_reflect";
+import { StorageTextureFormat } from "./storageTextures";
 import { WGSLType } from "./WGSLType";
 
-export interface WgslBinding {
+interface WgslBindingBase {
     id: string;
     group: number;
     index: number;
     name: string;
     type: WGSLType;
     attributes: Attribute[] | null;
-    /** The directive comment this binding's values came from, if any. */
+    /** The directive comment this binding was configured from, if any. */
     directive: string | null;
     /** Set when that comment could not be read as a directive for this type. */
     warning: string | null;
     writable: boolean;
     resourceType: ResourceType;
+}
+
+/** A binding whose contents live on the CPU as text, and are uploaded to a buffer on every run. */
+export interface WgslBufferBinding extends WgslBindingBase {
+    kind: "buffer";
     input: string;
     buffer: ArrayBuffer;
 }
 
+/**
+ * A storage texture, which exists only on the GPU. There is nothing to upload and nothing to edit:
+ * the shader writes it, and the directive comment gives its size rather than its contents.
+ */
+export interface WgslTextureBinding extends WgslBindingBase {
+    kind: "texture";
+    format: StorageTextureFormat;
+    width: number;
+    height: number;
+}
+
+export type WgslBinding = WgslBufferBinding | WgslTextureBinding;
+
 export interface BindingOutput {
-    binding: WgslBinding;
+    binding: WgslBufferBinding;
     value: string;
 }
 
