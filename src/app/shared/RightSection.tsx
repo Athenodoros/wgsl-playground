@@ -14,7 +14,7 @@ export const RightSection: React.FC<RightSectionProps> = ({ title, icon, disable
     return (
         <Section
             title={title}
-            className={"[&>.bp5-section-header]:shrink-0 min-h-[50px] [&>.bp5-collapse]:!overflow-y-auto flex flex-col"}
+            className={"[&>.bp6-section-header]:shrink-0 min-h-[50px] [&>.bp6-collapse]:!overflow-y-auto flex flex-col"}
             collapsible={!disabled}
             collapseProps={{ isOpen, onToggle: () => setIsOpen(!isOpen) }}
             icon={icon}
