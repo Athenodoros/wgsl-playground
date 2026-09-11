@@ -2,6 +2,20 @@ import { Editor } from "@monaco-editor/react";
 import React from "react";
 import { WGSLType } from "../../utilities/WGSLType";
 
+export const VariableHeader: React.FC<{ title: string; subtitle: string; type: WGSLType }> = ({
+    title,
+    subtitle,
+    type,
+}) => (
+    <div className="flex justify-between mb-2 ml-4">
+        <div className="flex items-center gap-1">
+            <pre className="text-sm leading-none bg-slate-100 py-1 px-2 rounded-md">{title}</pre>
+            <p className="text-xs italic text-gray-500 leading-none !mb-0">{subtitle}</p>
+        </div>
+        <p className="text-sm italic !mb-0">{type.getDisplay()}</p>
+    </div>
+);
+
 export const VariableDisplay: React.FC<{
     title: string;
     subtitle: string;
@@ -12,13 +26,7 @@ export const VariableDisplay: React.FC<{
     readOnly?: boolean;
 }> = ({ title, subtitle, type, value, isError, onChange, readOnly }) => (
     <div className="mr-4">
-        <div className="flex justify-between mb-2 ml-4">
-            <div className="flex items-center gap-1">
-                <pre className="text-sm leading-none bg-slate-100 py-1 px-2 rounded-md">{title}</pre>
-                <p className="text-xs italic text-gray-500 leading-none !mb-0">{subtitle}</p>
-            </div>
-            <p className="text-sm italic !mb-0">{type.getDisplay()}</p>
-        </div>
+        <VariableHeader title={title} subtitle={subtitle} type={type} />
         <Editor
             className={isError ? "border-red-500 border-1" : ""}
             height={value.split("\n").length * 18 + 12}

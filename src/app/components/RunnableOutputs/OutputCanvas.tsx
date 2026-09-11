@@ -1,10 +1,11 @@
 import { CSSProperties, useCallback, useState } from "react";
 import { useAppState } from "../../../state";
+import { OUTPUT_CANVAS_HEIGHT, OUTPUT_CANVAS_WIDTH } from "../../../utilities/canvas";
 
 const SCALING = window.devicePixelRatio || 1;
-const CANVAS_WIDTH = 640;
+const CANVAS_WIDTH = OUTPUT_CANVAS_WIDTH;
 const CANVAS_WIDTH_PX = CANVAS_WIDTH * SCALING;
-const CANVAS_HEIGHT = 360;
+const CANVAS_HEIGHT = OUTPUT_CANVAS_HEIGHT;
 const CANVAS_HEIGHT_PX = CANVAS_HEIGHT * SCALING;
 
 export const OutputCanvas: React.FC<{ hidden?: boolean }> = ({ hidden }) => {

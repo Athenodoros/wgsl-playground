@@ -1,9 +1,10 @@
 import { Callout, SectionCard } from "@blueprintjs/core";
 import React, { useCallback } from "react";
 import { useAppState } from "../../state";
-import { WgslBinding } from "../../utilities/types";
+import { WgslBinding, WgslBufferBinding } from "../../utilities/types";
 import { BindingDisplay } from "../shared/BindingDisplay";
 import { RightSection } from "../shared/RightSection";
+import { TextureBindingDisplay } from "../shared/TextureBindingDisplay";
 import { useVariableDisplayProps } from "../shared/useVariableDisplayProps";
 
 export const BindingsDisplay: React.FC = () => {
@@ -29,7 +30,24 @@ export const BindingsDisplay: React.FC = () => {
     );
 };
 
-const InnerBindingDisplay: React.FC<{ binding: WgslBinding }> = ({ binding }) => {
+const InnerBindingDisplay: React.FC<{ binding: WgslBinding }> = ({ binding }) => (
+    <div className="flex flex-col gap-2">
+        {binding.kind === "texture" ? (
+            <TextureBindingDisplay binding={binding} />
+        ) : (
+            <BufferBindingDisplay binding={binding} />
+        )}
+        {binding.warning ? (
+            <div className="mx-4">
+                <Callout intent="warning" icon="warning-sign" compact={true}>
+                    {binding.warning}
+                </Callout>
+            </div>
+        ) : null}
+    </div>
+);
+
+const BufferBindingDisplay: React.FC<{ binding: WgslBufferBinding }> = ({ binding }) => {
     const readOnly = useAppState((state) => state.type === "failed-parse" || state.type === "loading");
     const setBindingInput = useAppState((state) => state.setBindingInput);
 
@@ -40,16 +58,5 @@ const InnerBindingDisplay: React.FC<{ binding: WgslBinding }> = ({ binding }) =>
 
     const props = useVariableDisplayProps(binding.input, handleChange, binding.type);
 
-    return (
-        <div className="flex flex-col gap-2">
-            <BindingDisplay binding={binding} {...props} readOnly={readOnly} />
-            {binding.warning ? (
-                <div className="mx-4">
-                    <Callout intent="warning" icon="warning-sign" compact={true}>
-                        {binding.warning}
-                    </Callout>
-                </div>
-            ) : null}
-        </div>
-    );
+    return <BindingDisplay binding={binding} {...props} readOnly={readOnly} />;
 };

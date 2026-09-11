@@ -11,6 +11,7 @@ import {
     RunnerResultError,
     RunnerResults,
     WgslBinding,
+    WgslBufferBinding,
 } from "./types";
 import { WGSLType } from "./WGSLType";
 
@@ -24,7 +25,12 @@ export const runWGSLFunction = async (
     bindings: WgslBinding[],
     canvas: HTMLCanvasElement
 ): Promise<RunnerResults> => {
-    if (bindings.some((b) => b.resourceType !== ResourceType.Uniform && b.resourceType !== ResourceType.Storage))
+    if (
+        bindings.some(
+            (b) =>
+                b.kind === "buffer" && b.resourceType !== ResourceType.Uniform && b.resourceType !== ResourceType.Storage
+        )
+    )
         throw new Error("Unsupported resource type");
 
     device.pushErrorScope("validation");
@@ -47,7 +53,7 @@ const runSimpleFunction = async (
     if (runner.type === "error") return { type: "errors", errors: [formatRuntimeError(new Error(runner.error))] };
 
     const module = device.createShaderModule({ code: runner.code });
-    const buffers = runComputeModule(device, module, runner.bindings, STUB_FUNCTION_RUNNER_NAME, [1, 1, 1]);
+    const { buffers } = runComputeModule(device, module, runner.bindings, STUB_FUNCTION_RUNNER_NAME, [1, 1, 1]);
     const buffer = buffers[STUB_FUNCTION_RUNNER_OUTPUT_BINDING_ID];
     const value = await readBufferValue(device, buffer, runner.outputBindingType);
 
@@ -61,7 +67,7 @@ const runRenderShader = async (
     bindings: WgslBinding[],
     canvas: HTMLCanvasElement
 ): Promise<RunnerResults> => {
-    const { bindGroups, pipelineLayout } = getBindingResources(bindings, device, GPUShaderStage.FRAGMENT);
+    const { bindGroups, pipelineLayout, textures } = getBindingResources(bindings, device, GPUShaderStage.FRAGMENT);
     const module = device.createShaderModule({ code: wgsl });
 
     const pipeline = device.createRenderPipeline({
@@ -144,6 +150,7 @@ const runRenderShader = async (
     const getTextureValue = (row: number, column: number) => values[row]?.[column] ?? null;
 
     if (maybeDepthTexture) maybeDepthTexture.destroy();
+    for (const bound of Object.values(textures)) bound.destroy();
 
     // console.log("Waiting for 100ms: ", canvas.id);
     // await new Promise((resolve) => setTimeout(resolve, 100));
@@ -159,15 +166,20 @@ const runComputeShader = async (
     bindings: WgslBinding[]
 ): Promise<RunnerResults> => {
     const module = device.createShaderModule({ code: wgsl });
-    const buffers = runComputeModule(device, module, bindings, runnable.name, runnable.threads);
+    const { buffers, textures } = runComputeModule(device, module, bindings, runnable.name, runnable.threads);
 
+    // A storage texture has no CPU-side value to stringify, and stringifying one would be the slowest
+    // thing the playground does, so it is left out of the outputs panel.
     const promises = bindings
-        .filter((binding) => binding.writable)
+        .filter((binding): binding is WgslBufferBinding => binding.kind === "buffer" && binding.writable)
         .map((binding) =>
             readBufferValue(device, buffers[binding.id], binding.type).then((value) => ({ binding, value }))
         );
 
-    return maybeReturnResults(wgsl, await Promise.all(promises), device, module, null);
+    const results = await Promise.all(promises);
+    for (const bound of Object.values(textures)) bound.destroy();
+
+    return maybeReturnResults(wgsl, results, device, module, null);
 };
 
 const getBindingResources = (bindings: WgslBinding[], device: GPUDevice, visibility: number) => {
@@ -177,17 +189,20 @@ const getBindingResources = (bindings: WgslBinding[], device: GPUDevice, visibil
         device.createBindGroupLayout({
             entries: bindings
                 .filter(({ group }) => group === groupId)
-                .map((binding) => {
+                .map((binding): GPUBindGroupLayoutEntry => {
+                    if (binding.kind === "texture")
+                        return {
+                            binding: binding.index,
+                            visibility,
+                            storageTexture: { access: "write-only", format: binding.format, viewDimension: "2d" },
+                        };
+
                     const buffer =
                         binding.resourceType === ResourceType.Uniform
                             ? "uniform"
-                            : binding.resourceType === ResourceType.Storage
-                            ? binding.writable
-                                ? "storage"
-                                : "read-only-storage"
-                            : null;
-
-                    if (buffer === null) throw new Error("Unsupported resource type");
+                            : binding.writable
+                            ? "storage"
+                            : "read-only-storage";
 
                     return {
                         binding: binding.index,
@@ -200,10 +215,27 @@ const getBindingResources = (bindings: WgslBinding[], device: GPUDevice, visibil
     const pipelineLayout = device.createPipelineLayout({ bindGroupLayouts });
 
     const buffers: Record<string, GPUBuffer> = {};
+    const textures: Record<string, GPUTexture> = {};
     const bindGroups = groupIds.map((groupId, groupdIdx) => {
         const entries: GPUBindGroupEntry[] = bindings
             .filter(({ group }) => group === groupId)
             .map((binding) => {
+                // A storage texture has nothing to upload: it starts blank and the shader fills it.
+                // COPY_SRC is for the hover readout, and TEXTURE_BINDING for the blit onto the canvas.
+                if (binding.kind === "texture") {
+                    const texture = device.createTexture({
+                        label: binding.name,
+                        size: { width: binding.width, height: binding.height },
+                        format: binding.format,
+                        usage:
+                            GPUTextureUsage.STORAGE_BINDING |
+                            GPUTextureUsage.TEXTURE_BINDING |
+                            GPUTextureUsage.COPY_SRC,
+                    });
+                    textures[binding.id] = texture;
+                    return { binding: binding.index, resource: texture.createView() };
+                }
+
                 let usage = GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST;
                 if (binding.resourceType === ResourceType.Uniform) usage |= GPUBufferUsage.UNIFORM;
                 else usage |= GPUBufferUsage.STORAGE;
@@ -217,7 +249,7 @@ const getBindingResources = (bindings: WgslBinding[], device: GPUDevice, visibil
         return [groupId, device.createBindGroup({ layout: bindGroupLayouts[groupdIdx], entries })] as const;
     });
 
-    return { buffers, bindGroups, pipelineLayout };
+    return { buffers, textures, bindGroups, pipelineLayout };
 };
 
 const maybeReturnResults = async (
@@ -350,6 +382,7 @@ fn ${STUB_FUNCTION_RUNNER_NAME}() {
     const newBindings: WgslBinding[] = [
         {
             id: "stub_function_runner_input",
+            kind: "buffer",
             resourceType: ResourceType.Storage,
             writable: false,
             group: newGroupId,
@@ -364,6 +397,7 @@ fn ${STUB_FUNCTION_RUNNER_NAME}() {
         },
         {
             id: STUB_FUNCTION_RUNNER_OUTPUT_BINDING_ID,
+            kind: "buffer",
             resourceType: ResourceType.Storage,
             writable: true,
             group: newGroupId,
@@ -388,7 +422,11 @@ const runComputeModule = (
     name: string,
     threads: [number, number, number]
 ) => {
-    const { buffers, bindGroups, pipelineLayout } = getBindingResources(bindings, device, GPUShaderStage.COMPUTE);
+    const { buffers, textures, bindGroups, pipelineLayout } = getBindingResources(
+        bindings,
+        device,
+        GPUShaderStage.COMPUTE
+    );
     const pipeline = device.createComputePipeline({
         label: `Runner for ${name}`,
         layout: pipelineLayout,
@@ -405,7 +443,7 @@ const runComputeModule = (
     computePass.end();
     device.queue.submit([commandEncoder.finish()]);
 
-    return buffers;
+    return { buffers, textures };
 };
 
 const readBufferValue = async (device: GPUDevice, buffer: GPUBuffer, type: WGSLType): Promise<string> => {
