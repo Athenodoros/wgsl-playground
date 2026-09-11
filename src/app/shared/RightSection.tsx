@@ -14,7 +14,10 @@ export const RightSection: React.FC<RightSectionProps> = ({ title, icon, disable
     return (
         <Section
             title={title}
-            className={"[&>.bp6-section-header]:shrink-0 min-h-[50px] [&>.bp6-collapse]:!overflow-y-auto flex flex-col"}
+            // Sections keep the height their content asks for, and the column they sit in scrolls.
+            // Letting them shrink instead squashed every one of them at once, and gave each its own
+            // little scrollbar, which is a worse way to read a panel than scrolling the side.
+            className={"shrink-0 min-h-[50px] flex flex-col"}
             collapsible={!disabled}
             collapseProps={{ isOpen, onToggle: () => setIsOpen(!isOpen) }}
             icon={icon}

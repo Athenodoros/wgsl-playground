@@ -17,7 +17,7 @@ export const App = () => {
                 <AppNavbar />
                 <div className="flex p-4 gap-4 items-stretch h-screen pt-16.5">
                     <WGSLEditor />
-                    <div className="w-2xl flex flex-col gap-4">
+                    <div className="w-2xl flex flex-col gap-4 overflow-y-auto -m-px p-px">
                         <StructDisplay />
                         <BindingsDisplay />
                         <RightSection title="Function Runner" icon="flow-end">
