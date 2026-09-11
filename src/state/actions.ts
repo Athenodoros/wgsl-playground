@@ -163,15 +163,18 @@ const updateParseResultsFromPrevious = (
         result.runnables[0] ??
         null;
 
+    // Counts set by hand survive an edit, but only while the directive behind them is unchanged -
+    // the same rule the bindings above use for their inputs, so that editing a comment takes effect
+    // instead of being quietly discarded.
     if (result.selected?.type === "compute") {
-        if (state.selected?.type === "compute")
-            result.selected.threads = (state.selected as RunnableComputeShader).threads;
+        const previous = state.selected?.type === "compute" ? (state.selected as RunnableComputeShader) : null;
+        if (previous && previous.directive === result.selected.directive)
+            result.selected.threads = previous.threads;
     } else if (result.selected?.type === "render") {
-        if (state.selected?.type === "render") {
-            result.selected.fragment = (state.selected as RunnableRender).fragment;
-            // Carried over for the same reason the compute branch carries its work group count:
-            // editing the shader should not throw away a count the user set by hand.
-            result.selected.vertices = (state.selected as RunnableRender).vertices;
+        const previous = state.selected?.type === "render" ? (state.selected as RunnableRender) : null;
+        if (previous) {
+            result.selected.fragment = previous.fragment;
+            if (previous.directive === result.selected.directive) result.selected.vertices = previous.vertices;
         }
     } else if (result.selected?.type === "function") {
         for (const idx of range(result.selected.arguments.length)) {

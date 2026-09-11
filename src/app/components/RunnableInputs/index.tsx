@@ -1,4 +1,4 @@
-import { NumericInput, NumericInputProps, SectionCard } from "@blueprintjs/core";
+import { Callout, NumericInput, NumericInputProps, SectionCard } from "@blueprintjs/core";
 import React, { useCallback } from "react";
 import { useAppState } from "../../../state";
 import { RunnableFunctionArgument } from "../../../utilities/types";
@@ -21,6 +21,7 @@ export const RunnableInputs: React.FC = () => {
                 {output?.type === "compute" ? (
                     <RunnableInput title="Work Group Count" subtext="X, Y, Z">
                         <NumericInputWrapper
+                            key={`x-${output.directive}`}
                             placeholder="X"
                             defaultValue={output.threads[0]}
                             onValueChange={(value) =>
@@ -28,6 +29,7 @@ export const RunnableInputs: React.FC = () => {
                             }
                         />
                         <NumericInputWrapper
+                            key={`y-${output.directive}`}
                             placeholder="Y"
                             defaultValue={output.threads[1]}
                             onValueChange={(value) =>
@@ -35,6 +37,7 @@ export const RunnableInputs: React.FC = () => {
                             }
                         />
                         <NumericInputWrapper
+                            key={`z-${output.directive}`}
                             placeholder="Z"
                             defaultValue={output.threads[2]}
                             onValueChange={(value) =>
@@ -46,6 +49,7 @@ export const RunnableInputs: React.FC = () => {
                     <>
                         <RunnableInput title="Vertices" subtext="Count">
                             <NumericInputWrapper
+                                key={`vertices-${output.directive}`}
                                 placeholder="Count"
                                 defaultValue={output.vertices}
                                 onValueChange={(vertices) => setOutput({ ...output, vertices })}
@@ -67,6 +71,11 @@ export const RunnableInputs: React.FC = () => {
                             <RunnableInputDisplay key={arg.name} arg={arg} />
                         ))}
                     </>
+                ) : null}
+                {(output?.type === "compute" || output?.type === "render") && output.warning ? (
+                    <Callout intent="warning" icon="warning-sign" compact={true}>
+                        {output.warning}
+                    </Callout>
                 ) : null}
             </div>
         </SectionCard>

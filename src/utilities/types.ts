@@ -51,6 +51,10 @@ export interface RunnableComputeShader {
     type: "compute";
     name: string;
     threads: [number, number, number];
+    /** The directive comment the counts came from, so an edit to it can be told from any other. */
+    directive: string | null;
+    /** Set when that comment could not be read as a work group count. */
+    warning: string | null;
 }
 
 export interface RunnableFunctionArgument {
@@ -76,6 +80,10 @@ export interface RunnableRender {
     vertex: string;
     fragment: string;
     vertices: number;
+    /** The directive comment the count came from, so an edit to it can be told from any other. */
+    directive: string | null;
+    /** Set when that comment could not be read as a vertex count. */
+    warning: string | null;
     useDepthTexture: boolean;
 }
 

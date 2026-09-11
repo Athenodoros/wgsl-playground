@@ -1,5 +1,5 @@
 import { WgslReflect } from "wgsl_reflect";
-import { getDirectiveSource } from "./directives";
+import { getDirectiveSource, getRunCounts } from "./directives";
 import { ParseResults, Runnable, RunnableFunction, WgslBinding } from "./types";
 import { WGSLType } from "./WGSLType";
 
@@ -59,7 +59,7 @@ export const parseWGSL = (
     );
     if (error) return { type: "failed-parse", error };
 
-    const runnables = getFunctionRunOptions(reflect.reflect);
+    const runnables = getFunctionRunOptions(reflect.reflect, wgsl);
 
     return {
         type: "running",
@@ -70,7 +70,10 @@ export const parseWGSL = (
     };
 };
 
-const getFunctionRunOptions = (reflection: WgslReflect): Runnable[] => {
+const DEFAULT_THREADS: [number, number, number] = [1, 1, 1];
+const DEFAULT_VERTICES = 3;
+
+const getFunctionRunOptions = (reflection: WgslReflect, wgsl: string): Runnable[] => {
     const fragments = reflection.functions.filter((f) => f.stage === "fragment");
 
     return reflection.functions.flatMap((f): Runnable[] => {
@@ -103,17 +106,28 @@ const getFunctionRunOptions = (reflection: WgslReflect): Runnable[] => {
         }
 
         if (f.stage === "compute") {
-            return [{ id: `compute-${f.name}`, type: "compute", name: f.name, threads: [1, 1, 1] }];
+            const { directive, counts, warning } = getRunCounts(f.attributes, wgsl, 3);
+            const threads = DEFAULT_THREADS.map((fallback, idx) => counts?.[idx] ?? fallback) as [
+                number,
+                number,
+                number
+            ];
+
+            return [{ id: `compute-${f.name}`, type: "compute", name: f.name, threads, directive, warning }];
         }
 
         if (f.stage === "vertex") {
+            const { directive, counts, warning } = getRunCounts(f.attributes, wgsl, 1);
+
             // return [{ id: `render-triangles-${f.name}`, type: "render-triangles", vertex: f.name } as Runnable].concat(
             return fragments.map((frag) => ({
                 id: `render-${f.name}-${frag.name}`,
                 type: "render",
                 vertex: f.name,
                 fragment: frag.name,
-                vertices: 3,
+                vertices: counts?.[0] ?? DEFAULT_VERTICES,
+                directive,
+                warning,
                 useDepthTexture: true,
             }));
         }
