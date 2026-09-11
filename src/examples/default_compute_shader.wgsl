@@ -5,7 +5,8 @@
 const workgroup_length : u32 = 128;
 var<workgroup> workgroup_counts: array<i32, workgroup_length>;
 
-@compute @workgroup_size(workgroup_length,1,1)
+@compute /// 1, 1, 1
+@workgroup_size(workgroup_length,1,1)
 fn get_counts(@builtin(global_invocation_id) GlobalInvocationID: vec3<u32>) {
     let thread_id = GlobalInvocationID.x;
     let array_length = arrayLength(&input_array);

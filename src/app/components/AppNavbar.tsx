@@ -108,6 +108,33 @@ const HelpNavbarButton: React.FC = () => {
                                 ordinary prose and passed over. Bindings without a directive are filled with 1.
                             </p>
                         </section>
+
+                        <section>
+                            <h3 className="font-semibold mb-2">Default run counts</h3>
+                            <p className="mb-3">
+                                The same comment on a <code>@compute</code> or <code>@vertex</code> declaration sets the
+                                run's initial work group count or vertex count, which can still be changed in the Run
+                                Target panel afterwards:
+                            </p>
+                            <pre className="bg-slate-100 rounded p-3 overflow-x-auto text-xs">
+                                <code>{`@compute // 8, 8, 1
+@workgroup_size(64, 1, 1)
+fn main() { }
+
+@vertex // 6
+fn vertex_main() -> @builtin(position) vec4<f32> { }`}</code>
+                            </pre>
+                            <p className="my-3">
+                                This is the number of work groups to dispatch, not the size of each one - that is what{" "}
+                                <code>@workgroup_size</code> sets. Trailing dimensions can be left off, so{" "}
+                                <code>// 16</code> means <code>16, 1, 1</code>.
+                            </p>
+                            <p className="mt-3">
+                                Counts have to be whole numbers of at least one, so <code>rand</code> and the
+                                parentheses and <code>*</code> used for binding values are not accepted here. Without a
+                                comment a run starts at <code>1, 1, 1</code> work groups or <code>3</code> vertices.
+                            </p>
+                        </section>
                     </div>
                 </div>
             </Drawer>
