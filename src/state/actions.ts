@@ -2,7 +2,7 @@ import { StoreApi } from "zustand";
 import { assertNever, noop, range } from "../utilities/data";
 import { parseWGSL } from "../utilities/parseWGSL";
 import { runWGSLFunction } from "../utilities/runWGSLFunction";
-import { ParseResults, RunnableComputeShader, RunnableFunction, RunnableRender } from "../utilities/types";
+import { ParseResults, RunnableComputeShader, RunnableRender } from "../utilities/types";
 import { AppActions, AppFailedParseState, AppFinishedState, AppRunningState, AppState } from "./types";
 
 export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi<AppState>["getState"]): AppActions => {
@@ -118,7 +118,7 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
                 selected: {
                     ...state.selected,
                     arguments: state.selected.arguments.map((arg) =>
-                        arg.name === name ? { ...arg, input, buffer } : arg
+                        arg.name === name ? { ...arg, input, buffer } : arg,
                     ),
                 },
             });
@@ -128,7 +128,7 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
 
 const updateParseResultsFromPrevious = (
     result: ParseResults,
-    state: AppFailedParseState | AppRunningState | AppFinishedState
+    state: AppFailedParseState | AppRunningState | AppFinishedState,
 ) => {
     for (const binding of result.bindings) {
         const oldBinding =
@@ -168,8 +168,7 @@ const updateParseResultsFromPrevious = (
     // instead of being quietly discarded.
     if (result.selected?.type === "compute") {
         const previous = state.selected?.type === "compute" ? (state.selected as RunnableComputeShader) : null;
-        if (previous && previous.directive === result.selected.directive)
-            result.selected.threads = previous.threads;
+        if (previous && previous.directive === result.selected.directive) result.selected.threads = previous.threads;
     } else if (result.selected?.type === "render") {
         const previous = state.selected?.type === "render" ? (state.selected as RunnableRender) : null;
         if (previous) {
@@ -177,11 +176,18 @@ const updateParseResultsFromPrevious = (
             if (previous.directive === result.selected.directive) result.selected.vertices = previous.vertices;
         }
     } else if (result.selected?.type === "function") {
-        for (const idx of range(result.selected.arguments.length)) {
-            const arg = result.selected.arguments[idx];
-            const oldArg =
-                (state.selected as RunnableFunction).arguments.find((a) => a.name === arg.name) ??
-                (state.selected as RunnableFunction).arguments[idx];
+        // Only a function has arguments to carry over, and the selection before this edit need not
+        // have been one - the compute and render branches above already check, and this did not.
+        const previous = state.selected?.type === "function" ? state.selected : null;
+        if (!previous) {
+            return;
+        }
+
+        const current = result.selected;
+
+        for (const idx of range(current.arguments.length)) {
+            const arg = current.arguments[idx];
+            const oldArg = previous.arguments.find((a) => a.name === arg.name) ?? previous.arguments[idx];
             if (oldArg === undefined) continue;
 
             const newDefault = arg.type.getDefaultValue();
