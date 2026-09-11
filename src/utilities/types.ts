@@ -10,6 +10,8 @@ export interface WgslBinding {
     name: string;
     type: WGSLType;
     attributes: Attribute[] | null;
+    /** The directive comment this binding's values came from, if any. */
+    directive: string | null;
     writable: boolean;
     resourceType: ResourceType;
     input: string;
