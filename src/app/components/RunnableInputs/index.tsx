@@ -21,6 +21,7 @@ export const RunnableInputs: React.FC = () => {
                 {output?.type === "compute" ? (
                     <RunnableInput title="Work Group Count" subtext="X, Y, Z">
                         <NumericInputWrapper
+                            key={`x-${output.defaultThreads[0]}`}
                             placeholder="X"
                             defaultValue={output.threads[0]}
                             onValueChange={(value) =>
@@ -28,6 +29,7 @@ export const RunnableInputs: React.FC = () => {
                             }
                         />
                         <NumericInputWrapper
+                            key={`y-${output.defaultThreads[1]}`}
                             placeholder="Y"
                             defaultValue={output.threads[1]}
                             onValueChange={(value) =>
@@ -35,6 +37,7 @@ export const RunnableInputs: React.FC = () => {
                             }
                         />
                         <NumericInputWrapper
+                            key={`z-${output.defaultThreads[2]}`}
                             placeholder="Z"
                             defaultValue={output.threads[2]}
                             onValueChange={(value) =>
@@ -46,6 +49,7 @@ export const RunnableInputs: React.FC = () => {
                     <>
                         <RunnableInput title="Vertices" subtext="Count">
                             <NumericInputWrapper
+                                key={`vertices-${output.defaultVertices}`}
                                 placeholder="Count"
                                 defaultValue={output.vertices}
                                 onValueChange={(vertices) => setOutput({ ...output, vertices })}

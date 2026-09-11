@@ -1,5 +1,5 @@
 import { StoreApi } from "zustand";
-import { assertNever, noop, range } from "../utilities/data";
+import { assertNever, deepEquals, noop, range } from "../utilities/data";
 import { parseWGSL } from "../utilities/parseWGSL";
 import { runWGSLFunction } from "../utilities/runWGSLFunction";
 import { ParseResults, RunnableComputeShader, RunnableFunction, RunnableRender } from "../utilities/types";
@@ -153,15 +153,20 @@ const updateParseResultsFromPrevious = (
         result.runnables[0] ??
         null;
 
+    // Counts the user set by hand are kept, but only while the directive they came from is
+    // unchanged - otherwise editing a directive would appear to do nothing, and loading an example
+    // would inherit the previous shader's count. This is the rule the bindings above use for their
+    // inputs, applied to run counts.
     if (result.selected?.type === "compute") {
-        if (state.selected?.type === "compute")
-            result.selected.threads = (state.selected as RunnableComputeShader).threads;
+        const previous = state.selected?.type === "compute" ? (state.selected as RunnableComputeShader) : null;
+        if (previous && deepEquals(previous.defaultThreads, result.selected.defaultThreads))
+            result.selected.threads = previous.threads;
     } else if (result.selected?.type === "render") {
-        if (state.selected?.type === "render") {
-            result.selected.fragment = (state.selected as RunnableRender).fragment;
-            // Carried over for the same reason the compute branch carries its work group count:
-            // editing the shader should not throw away a count the user set by hand.
-            result.selected.vertices = (state.selected as RunnableRender).vertices;
+        const previous = state.selected?.type === "render" ? (state.selected as RunnableRender) : null;
+        if (previous) {
+            result.selected.fragment = previous.fragment;
+            if (previous.defaultVertices === result.selected.defaultVertices)
+                result.selected.vertices = previous.vertices;
         }
     } else if (result.selected?.type === "function") {
         for (const idx of range(result.selected.arguments.length)) {

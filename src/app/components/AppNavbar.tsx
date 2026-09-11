@@ -101,6 +101,31 @@ const HelpNavbarButton: React.FC = () => {
                                 1.
                             </p>
                         </section>
+
+                        <section>
+                            <h3 className="font-semibold mb-2">Default run counts</h3>
+                            <p className="mb-3">
+                                The same comment on a <code>@compute</code> or <code>@vertex</code> declaration sets the
+                                run's initial work group count or vertex count, which can still be changed in the Run
+                                Target panel afterwards:
+                            </p>
+                            <pre className="bg-slate-100 rounded p-3 overflow-x-auto text-xs">
+                                <code>{`@compute @workgroup_size(64, 1, 1) // 8, 8, 1`}</code>
+                            </pre>
+                            <pre className="bg-slate-100 rounded p-3 mt-3 overflow-x-auto text-xs">
+                                <code>{`@vertex // 6`}</code>
+                            </pre>
+                            <p className="my-3">
+                                Note that this is the number of work groups to dispatch, not the size of each one - that
+                                is what <code>@workgroup_size</code> sets. Counts have to be whole numbers of at least
+                                one, so <code>rand</code> is not accepted here.
+                            </p>
+                            <p>
+                                Without a comment, a run starts at <code>1, 1, 1</code> work groups or <code>3</code>{" "}
+                                vertices. A count changed by hand is kept while you edit the shader, unless you change
+                                the comment it came from.
+                            </p>
+                        </section>
                     </div>
                 </div>
             </Drawer>

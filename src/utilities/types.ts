@@ -47,6 +47,8 @@ export interface RunnableComputeShader {
     type: "compute";
     name: string;
     threads: [number, number, number];
+    /** The count from the `@compute` directive comment, kept so an edit to it can be noticed. */
+    defaultThreads: [number, number, number];
 }
 
 export interface RunnableFunctionArgument {
@@ -72,6 +74,8 @@ export interface RunnableRender {
     vertex: string;
     fragment: string;
     vertices: number;
+    /** The count from the `@vertex` directive comment, kept so an edit to it can be noticed. */
+    defaultVertices: number;
     useDepthTexture: boolean;
 }
 

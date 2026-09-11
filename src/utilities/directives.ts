@@ -97,3 +97,20 @@ export const getDirectiveValueGenerator = (attributes: Attribute[] | null, wgsl:
     let index = 0;
     return () => evaluateTerm(terms[index++ % terms.length]);
 };
+
+/**
+ * The same directive read as a fixed list of counts, for the work group and vertex counts on
+ * `@compute` and `@vertex`. Counts are dimensions rather than values, so unlike a binding they do
+ * not repeat, and a `rand` term or a count that is not a positive whole number is rejected outright
+ * rather than passed on to fail WebGPU validation later. Surplus entries are ignored, as they are
+ * for a binding.
+ */
+export const getDirectiveCounts = (attributes: Attribute[] | null, wgsl: string): number[] | null => {
+    const terms = getDirectiveTerms(attributes, wgsl);
+    if (terms === null) return null;
+
+    const counts = terms.map((term) => (term.type === "value" ? term.value : null));
+    if (counts.some((count) => count === null || !Number.isInteger(count) || count < 1)) return null;
+
+    return counts as number[];
+};
