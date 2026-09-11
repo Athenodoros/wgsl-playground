@@ -18,10 +18,10 @@ export const WGSLEditor: React.FC = () => {
     };
 
     return (
-        <div className="basis-md grow flex flex-col gap-4">
+        <div className="basis-md grow min-w-0 flex flex-col gap-4">
             <Section
                 title="Editor"
-                className="grow shrink flex flex-col"
+                className="grow shrink min-w-0 flex flex-col"
                 rightElement={
                     <Popover
                         position="bottom"
@@ -48,7 +48,7 @@ export const WGSLEditor: React.FC = () => {
                     </Popover>
                 }
             >
-                <div className="bg-slate-200 p-2 grow shrink">
+                <div className="bg-slate-200 p-2 grow shrink min-w-0">
                     <Editor
                         defaultLanguage="wgsl"
                         defaultValue={INITIAL_APP_STATE.wgsl}
