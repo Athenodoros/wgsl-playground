@@ -1,11 +1,11 @@
-import { Button, OverlayToaster, Tooltip } from "@blueprintjs/core";
+import { Button, Tooltip } from "@blueprintjs/core";
 import { useEffect, useRef, useState } from "react";
 import { useAppState } from "../../state";
 import { INITIAL_SHARE_LINK } from "../../state/defaults";
 import { createShareLink, SHARE_LINK_WARNING_LENGTH } from "../../utilities/shareLink";
+import { AppToaster } from "../shared/AppToaster";
 
 export const ShareButton: React.FC = () => {
-    const toaster = useRef<OverlayToaster>(null);
     const initialShareHandled = useRef(false);
     const [copying, setCopying] = useState(false);
 
@@ -14,7 +14,7 @@ export const ShareButton: React.FC = () => {
         initialShareHandled.current = true;
 
         if (INITIAL_SHARE_LINK.error) {
-            toaster.current?.show(
+            AppToaster.show(
                 { message: INITIAL_SHARE_LINK.error, intent: "danger", icon: "error" },
                 "invalid-share-link",
             );
@@ -25,7 +25,7 @@ export const ShareButton: React.FC = () => {
             url.hash = params.toString();
             window.history.replaceState(window.history.state, "", url.href);
 
-            toaster.current?.show(
+            AppToaster.show(
                 { message: "Shared code loaded.", intent: "success", icon: "tick" },
                 "share-link-loaded",
             );
@@ -38,7 +38,7 @@ export const ShareButton: React.FC = () => {
             const link = createShareLink(useAppState.getState().wgsl, window.location.href);
             await navigator.clipboard.writeText(link);
             const isLong = link.length > SHARE_LINK_WARNING_LENGTH;
-            toaster.current?.show({
+            AppToaster.show({
                 message: isLong
                     ? "Share link copied, but it is very long and may not work in some browsers or messaging apps."
                     : "Share link copied to clipboard.",
@@ -46,7 +46,7 @@ export const ShareButton: React.FC = () => {
                 icon: isLong ? "warning-sign" : "tick",
             });
         } catch {
-            toaster.current?.show({
+            AppToaster.show({
                 message: "Could not copy the share link. Check your browser’s clipboard permissions and try again.",
                 intent: "danger",
                 icon: "error",
@@ -57,17 +57,14 @@ export const ShareButton: React.FC = () => {
     };
 
     return (
-        <>
-            <Tooltip content="Copy share link" position="bottom">
-                <Button
-                    icon="document-share"
-                    variant="minimal"
-                    aria-label="Copy share link"
-                    disabled={copying}
-                    onClick={copyShareLink}
-                />
-            </Tooltip>
-            <OverlayToaster ref={toaster} position="top" maxToasts={3} />
-        </>
+        <Tooltip content="Copy share link" position="bottom">
+            <Button
+                icon="document-share"
+                variant="minimal"
+                aria-label="Copy share link"
+                disabled={copying}
+                onClick={copyShareLink}
+            />
+        </Tooltip>
     );
 };
