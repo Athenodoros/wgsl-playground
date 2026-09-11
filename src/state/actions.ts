@@ -135,9 +135,19 @@ const updateParseResultsFromPrevious = (
             state.bindings.find((b) => b.id === binding.id) ?? state.bindings.find((b) => b.name === binding.name);
         if (oldBinding === undefined) continue;
 
+        // Values the user set by hand are kept across an edit, but only while both the binding's
+        // shape and the directive comment behind it are unchanged. Comparing generated values alone
+        // is not enough: getDefaultValue() here takes no directive, so every binding compares equal
+        // as all 1s and an edited comment is silently discarded. The comment cannot be compared by
+        // the values it produces either, since `rand` gives different ones every time.
         const newDefault = binding.type.getDefaultValue();
         const oldDefault = oldBinding.type.getDefaultValue();
-        if (newDefault.type === "values" && oldDefault.type === "values" && newDefault.value === oldDefault.value) {
+        if (
+            newDefault.type === "values" &&
+            oldDefault.type === "values" &&
+            newDefault.value === oldDefault.value &&
+            binding.directive === oldBinding.directive
+        ) {
             binding.input = oldBinding.input;
             binding.buffer = oldBinding.buffer;
         }

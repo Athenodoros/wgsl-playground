@@ -63,7 +63,10 @@ const parseDirective = (comment: string): DirectiveTerm[] | null => {
 const evaluateTerm = (term: DirectiveTerm) =>
     term.type === "value" ? term.value : Math.random() * (term.max - term.min) + term.min;
 
-const getDirectiveTerms = (attributes: Attribute[] | null, wgsl: string): DirectiveTerm[] | null => {
+const findDirective = (
+    attributes: Attribute[] | null,
+    wgsl: string
+): { comment: string; terms: DirectiveTerm[] } | null => {
     const codeLines = wgsl.split("\n");
 
     return (
@@ -72,11 +75,23 @@ const getDirectiveTerms = (attributes: Attribute[] | null, wgsl: string): Direct
                 const comment = codeLines[attribute.line - 1].match(/\/\/\/?(.*)/)?.[1]?.trim();
                 if (!comment) return null;
 
-                return parseDirective(comment);
+                const terms = parseDirective(comment);
+                return terms === null ? null : { comment, terms };
             })
-            ?.find((terms) => terms !== null) ?? null
+            ?.find((directive) => directive !== null) ?? null
     );
 };
+
+const getDirectiveTerms = (attributes: Attribute[] | null, wgsl: string): DirectiveTerm[] | null =>
+    findDirective(attributes, wgsl)?.terms ?? null;
+
+/**
+ * The text of the directive in force, or null if there is none. Held on to so that a change to the
+ * comment itself can be told apart from an unrelated edit elsewhere in the shader - the values it
+ * generates cannot be compared for that, since `rand` gives different ones every time.
+ */
+export const getDirectiveSource = (attributes: Attribute[] | null, wgsl: string): string | null =>
+    findDirective(attributes, wgsl)?.comment ?? null;
 
 /**
  * Returns a generator called once per value in the binding, or null if the attributes carry no

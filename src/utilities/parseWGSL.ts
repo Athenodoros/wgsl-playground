@@ -1,4 +1,5 @@
 import { WgslReflect } from "wgsl_reflect";
+import { getDirectiveSource } from "./directives";
 import { ParseResults, Runnable, RunnableFunction, WgslBinding } from "./types";
 import { WGSLType } from "./WGSLType";
 
@@ -47,6 +48,7 @@ export const parseWGSL = (
                 name: binding.name,
                 type: new WGSLType(binding.type, reflect.reflect.structs),
                 attributes: binding.attributes,
+                directive: getDirectiveSource(binding.attributes, wgsl),
                 resourceType: binding.resourceType,
                 writable: binding.access === "write" || binding.access === "read_write",
                 input: input.value,
