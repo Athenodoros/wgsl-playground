@@ -72,7 +72,34 @@ const HelpNavbarButton: React.FC = () => {
                             <pre className="bg-slate-100 rounded p-3 overflow-x-auto text-xs">
                                 <code>{`@group(0) @binding(1) var<storage, read> input: array<f32>; // rand(-1, 1)`}</code>
                             </pre>
-                            <p className="mt-3">Bindings without a default-value comment are initialized to 1.</p>
+                            <p className="my-3">
+                                A comma-separated list fills the binding's fields in order:
+                            </p>
+                            <pre className="bg-slate-100 rounded p-3 overflow-x-auto text-xs">
+                                <code>{`@group(0) @binding(2) var<uniform> light: Light; // 0.5, 0.5, 0.0, 1.0`}</code>
+                            </pre>
+                            <p className="my-3">
+                                The list repeats from the start if the binding has more fields than the list has
+                                entries, so an array of structs needs only one element's worth of values:
+                            </p>
+                            <pre className="bg-slate-100 rounded p-3 overflow-x-auto text-xs">
+                                <code>{`struct Source { position: vec2<f32>, frequency: f32 }
+
+@group(0) @binding(3) var<uniform> sources: array<Source, 4>; // 150, 110, 0.12`}</code>
+                            </pre>
+                            <p className="my-3">
+                                Numbers and <code>rand</code> can be mixed in one list, and each repetition draws new
+                                random values - so this gives all four sources the same position, but a different
+                                frequency each:
+                            </p>
+                            <pre className="bg-slate-100 rounded p-3 overflow-x-auto text-xs">
+                                <code>{`@group(0) @binding(4) var<uniform> sources: array<Source, 4>; // 150, 110, rand(0.05, 0.2)`}</code>
+                            </pre>
+                            <p className="mt-3">
+                                A single number and a bare <code>rand(min, max)</code> are the one-entry cases of this:
+                                they repeat for every field. Bindings without a default-value comment are initialized to
+                                1.
+                            </p>
                         </section>
                     </div>
                 </div>
