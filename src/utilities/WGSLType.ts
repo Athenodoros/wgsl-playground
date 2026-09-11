@@ -134,11 +134,21 @@ const getBufferSpec = (type: TypeInfo, structs: StructInfo[]): BufferSpec | null
     return { lines: range(rows).map(() => repeat([rawType as BufferComponent], columns)), repeat: false };
 };
 
+/**
+ * f32 values keep a trailing `.0` when whole, so they stay visibly distinct from integers, but are
+ * otherwise left at f32 precision. The displayed string is what gets parsed back into the buffer,
+ * so rounding here is not cosmetic - it changes what the shader actually receives.
+ */
+const formatFloat = (value: number) => {
+    const rounded = Number(value.toPrecision(7));
+    return Number.isInteger(rounded) ? rounded.toFixed(1) : String(rounded);
+};
+
 const getArrayLine = (line: BufferComponent[], addComma: boolean, getDefaultValue: () => number) =>
     line
         .map((c) =>
             ({
-                f32: () => getDefaultValue().toFixed(1),
+                f32: () => formatFloat(getDefaultValue()),
                 u32: () => getDefaultValue().toFixed(0),
                 i32: () => getDefaultValue().toFixed(0),
                 padding: () => "null",

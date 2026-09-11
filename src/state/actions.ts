@@ -157,7 +157,12 @@ const updateParseResultsFromPrevious = (
         if (state.selected?.type === "compute")
             result.selected.threads = (state.selected as RunnableComputeShader).threads;
     } else if (result.selected?.type === "render") {
-        if (state.selected?.type === "render") result.selected.fragment = (state.selected as RunnableRender).fragment;
+        if (state.selected?.type === "render") {
+            result.selected.fragment = (state.selected as RunnableRender).fragment;
+            // Carried over for the same reason the compute branch carries its work group count:
+            // editing the shader should not throw away a count the user set by hand.
+            result.selected.vertices = (state.selected as RunnableRender).vertices;
+        }
     } else if (result.selected?.type === "function") {
         for (const idx of range(result.selected.arguments.length)) {
             const arg = result.selected.arguments[idx];
