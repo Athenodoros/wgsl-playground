@@ -28,8 +28,7 @@ export type StorageTextureFormat = keyof typeof STORAGE_TEXTURE_FORMATS;
 const isSupportedFormat = (format: string): format is StorageTextureFormat => format in STORAGE_TEXTURE_FORMATS;
 
 export type StorageTextureSupport =
-    | { type: "texture"; format: StorageTextureFormat }
-    | { type: "error"; error: string };
+    { type: "texture"; format: StorageTextureFormat } | { type: "error"; error: string };
 
 /**
  * Whether a storage texture binding is one the playground can handle, and its format if so.
@@ -48,7 +47,7 @@ export const getStorageTextureSupport = (type: TypeInfo): StorageTextureSupport 
         return {
             type: "error",
             error: `${format ?? "that"} is not a storage texture format the playground can display, which are ${Object.keys(
-                STORAGE_TEXTURE_FORMATS
+                STORAGE_TEXTURE_FORMATS,
             ).join(", ")}`,
         };
 

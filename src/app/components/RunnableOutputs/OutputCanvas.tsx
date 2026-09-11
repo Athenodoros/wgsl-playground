@@ -24,7 +24,7 @@ export const OutputCanvas: React.FC<{ hidden?: boolean }> = ({ hidden }) => {
 
             const rgba = results.getTextureValue(
                 event.nativeEvent.offsetY * SCALING,
-                event.nativeEvent.offsetX * SCALING
+                event.nativeEvent.offsetX * SCALING,
             );
 
             if (rgba === null) {
@@ -47,7 +47,7 @@ export const OutputCanvas: React.FC<{ hidden?: boolean }> = ({ hidden }) => {
 
             setPopover({ styles, rgba, coords });
         },
-        [results]
+        [results],
     );
 
     const handleMouseLeave = useCallback(() => setPopover(null), []);

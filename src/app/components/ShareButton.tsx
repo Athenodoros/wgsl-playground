@@ -25,10 +25,7 @@ export const ShareButton: React.FC = () => {
             url.hash = params.toString();
             window.history.replaceState(window.history.state, "", url.href);
 
-            AppToaster.show(
-                { message: "Shared code loaded.", intent: "success", icon: "tick" },
-                "share-link-loaded",
-            );
+            AppToaster.show({ message: "Shared code loaded.", intent: "success", icon: "tick" }, "share-link-loaded");
         }
     }, []);
 

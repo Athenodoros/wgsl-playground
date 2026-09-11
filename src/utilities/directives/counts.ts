@@ -51,7 +51,7 @@ export const getRunCounts = (
     attributes: Attribute[] | null,
     wgsl: string,
     dimensions: number,
-    noun = "count"
+    noun = "count",
 ): { directive: string | null; counts: number[] | null; warning: string | null } => {
     const directive = getDirectiveSource(attributes, wgsl);
     if (directive === null) return { directive: null, counts: null, warning: null };

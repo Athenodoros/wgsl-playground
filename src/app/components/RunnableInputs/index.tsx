@@ -86,7 +86,7 @@ const RunnableInputDisplay: React.FC<{ arg: RunnableFunctionArgument }> = ({ arg
     const setRunnableInput = useAppState((state) => state.setRunnableInput);
     const onUpdate = useCallback(
         (value: string, buffer: ArrayBuffer) => setRunnableInput(arg.name, value, buffer),
-        [arg.name, setRunnableInput]
+        [arg.name, setRunnableInput],
     );
 
     const props = useVariableDisplayProps(arg.input, onUpdate, arg.type);

@@ -10,5 +10,5 @@ export default mergeConfig(
             // gets through the `module` field.
             alias: { wgsl_reflect: "wgsl_reflect/wgsl_reflect.module.js" },
         },
-    })
+    }),
 );

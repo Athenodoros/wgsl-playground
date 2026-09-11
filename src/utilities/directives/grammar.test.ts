@@ -6,16 +6,15 @@ const brief = (node: DirectiveNode): string =>
     node.type === "value"
         ? String(node.value)
         : node.type === "rand"
-        ? `rand(${node.min},${node.max})`
-        : node.type === "repeat"
-        ? `${node.count}*${brief(node.item)}`
-        : `(${node.items.map(brief).join(" ")})`;
+          ? `rand(${node.min},${node.max})`
+          : node.type === "repeat"
+            ? `${node.count}*${brief(node.item)}`
+            : `(${node.items.map(brief).join(" ")})`;
 
 const parse = (comment: string) => {
     const result = parseDirective(comment);
     return result.type === "error" ? `ERROR: ${result.error}` : result.items.map(brief).join(" ");
 };
-
 
 describe("parseDirective", () => {
     it("parses a single value", () => {
@@ -92,4 +91,3 @@ describe("parseDirective", () => {
         expect(parse("")).toMatch(/^ERROR/);
     });
 });
-

@@ -95,7 +95,7 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
             }
 
             const bindings = state.bindings.map((b) =>
-                b.id === id && b.kind === "buffer" ? { ...b, input, buffer } : b
+                b.id === id && b.kind === "buffer" ? { ...b, input, buffer } : b,
             );
             if (state.type === "failed-parse") set({ ...state, bindings }, true);
             else startGPUProcessing({ ...state, type: "running", bindings });

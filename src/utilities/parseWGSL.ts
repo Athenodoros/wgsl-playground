@@ -19,7 +19,7 @@ export const getReflectionOrError = (wgsl: string, addToWindow: boolean = false)
 };
 
 export const parseWGSL = (
-    wgsl: string
+    wgsl: string,
 ): ({ type: "running" } & ParseResults) | { type: "failed-parse"; error: string } => {
     const reflect = getReflectionOrError(wgsl, true);
     if (reflect.type === "error") return { type: "failed-parse", error: reflect.error };
@@ -65,7 +65,7 @@ export const parseWGSL = (
             }
 
             return { ...common, kind: "buffer", warning: input.warning ?? null, input: input.value, buffer };
-        })
+        }),
     );
     if (error) return { type: "failed-parse", error };
 
@@ -120,7 +120,7 @@ const getFunctionRunOptions = (reflection: WgslReflect, wgsl: string): Runnable[
             const threads = DEFAULT_THREADS.map((fallback, idx) => counts?.[idx] ?? fallback) as [
                 number,
                 number,
-                number
+                number,
             ];
 
             return [{ id: `compute-${f.name}`, type: "compute", name: f.name, threads, directive, warning }];
@@ -155,7 +155,7 @@ type TextureBindingFields = Pick<WgslTextureBinding, "warning" | "format" | "wid
 
 const getTextureBinding = (
     binding: VariableInfo,
-    wgsl: string
+    wgsl: string,
 ): { type: "binding"; fields: TextureBindingFields } | { type: "error"; error: string } => {
     const support = getStorageTextureSupport(binding.type);
     if (support.type === "error") return support;

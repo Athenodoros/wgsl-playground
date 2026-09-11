@@ -92,10 +92,9 @@ const HelpNavbarButton: React.FC = () => {
                             </pre>
                             <h4 className="font-semibold mt-4 mb-2">Arrays</h4>
                             <p className="mb-3">
-                                Each entry in a list is one array element, so on an{" "}
-                                <code>{`array<vec3<f32>>`}</code> the directive <code>1, 2, 3</code> is three elements,
-                                each filled with a single value - while <code>(1, 2, 3)</code> is one element with three
-                                components.
+                                Each entry in a list is one array element, so on an <code>{`array<vec3<f32>>`}</code>{" "}
+                                the directive <code>1, 2, 3</code> is three elements, each filled with a single value -
+                                while <code>(1, 2, 3)</code> is one element with three components.
                             </p>
                             <p className="mb-3">
                                 An array with no declared length takes its length from the directive:{" "}

@@ -53,7 +53,7 @@ const BufferBindingDisplay: React.FC<{ binding: WgslBufferBinding }> = ({ bindin
 
     const handleChange = useCallback(
         (value: string, input: ArrayBuffer) => setBindingInput(binding.id, value, input),
-        [binding.id, setBindingInput]
+        [binding.id, setBindingInput],
     );
 
     const props = useVariableDisplayProps(binding.input, handleChange, binding.type);
