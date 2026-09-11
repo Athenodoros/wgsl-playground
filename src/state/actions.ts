@@ -44,6 +44,14 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
 
             const state = get();
             if (state.type !== "loading" || state.device === undefined) {
+                // Collapsing a section unmounts the canvas, and opening it again mounts a fresh one
+                // with nothing drawn on it. What the last run drew lives in the old element's swap
+                // chain and cannot be copied across, so the run has to happen again.
+                if (canvas !== state.canvas && (state.type === "running" || state.type === "finished")) {
+                    startGPUProcessing({ ...state, type: "running", canvas });
+                    return;
+                }
+
                 set({ ...state, canvas });
                 return;
             }

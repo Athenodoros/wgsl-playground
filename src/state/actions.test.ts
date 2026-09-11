@@ -2,6 +2,7 @@ import { StoreApi } from "zustand";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { parseWGSL } from "../utilities/parseWGSL";
 import { getAppActions } from "./actions";
+import { RunnerResults } from "../utilities/types";
 import { AppState } from "./types";
 
 // parseWGSL hangs the reflection off `window` for poking at in the console, and these tests run in
@@ -35,17 +36,12 @@ fn run() {
 `;
 
 /** A store with no GPU behind it, so the actions run but nothing is dispatched. */
-const storeShowing = (wgsl: string) => {
+const storeShowing = (wgsl: string, results?: RunnerResults) => {
     const parsed = parseWGSL(wgsl);
     if (parsed.type === "failed-parse") throw new Error(parsed.error);
 
-    let state: AppState = {
-        ...parsed,
-        type: "running",
-        device: null,
-        canvas: {} as HTMLCanvasElement,
-        wgsl,
-    };
+    const common = { ...parsed, device: null, canvas: {} as HTMLCanvasElement, wgsl };
+    let state: AppState = results ? { ...common, type: "finished", results } : { ...common, type: "running" };
 
     const set = ((update: Partial<AppState>, replace?: boolean) => {
         state = (replace ? update : { ...state, ...update }) as AppState;
@@ -53,6 +49,9 @@ const storeShowing = (wgsl: string) => {
 
     return { actions: getAppActions(set, () => state), getState: () => state };
 };
+
+/** A run that finished with nothing to show, which is all these tests need of one. */
+const DREW_SOMETHING: RunnerResults = { type: "outputs", bindings: [], returned: null };
 
 describe("setWGSL", () => {
     it("selects a function after an edit from a shader that had none", () => {
@@ -83,5 +82,47 @@ describe("setWGSL", () => {
         store.actions.setWGSL(RENDER_SHADER);
 
         expect(store.getState().selected?.type).toBe("render");
+    });
+});
+
+describe("setCanvas", () => {
+    // Collapsing the section the canvas lives in unmounts it, and opening the section again mounts
+    // a fresh one. Coming back to a finished run is the case that used to leave it blank.
+    it("runs again when a finished run is handed a new canvas", () => {
+        const store = storeShowing(RENDER_SHADER, DREW_SOMETHING);
+        const remounted = {} as HTMLCanvasElement;
+
+        store.actions.setCanvas(remounted);
+
+        expect(store.getState().canvas).toBe(remounted);
+        expect(store.getState().type).toBe("running");
+    });
+
+    it("runs again when a run still in flight is handed a new canvas", () => {
+        const store = storeShowing(RENDER_SHADER);
+        const remounted = {} as HTMLCanvasElement;
+
+        store.actions.setCanvas(remounted);
+
+        expect(store.getState().canvas).toBe(remounted);
+        expect(store.getState().type).toBe("running");
+    });
+
+    it("leaves a finished run alone when handed the canvas it already has", () => {
+        const store = storeShowing(RENDER_SHADER, DREW_SOMETHING);
+
+        store.actions.setCanvas(store.getState().canvas ?? null);
+
+        expect(store.getState().type).toBe("finished");
+    });
+
+    it("ignores the null React passes on unmount, keeping the canvas it had", () => {
+        const store = storeShowing(RENDER_SHADER, DREW_SOMETHING);
+        const original = store.getState().canvas;
+
+        store.actions.setCanvas(null);
+
+        expect(store.getState().canvas).toBe(original);
+        expect(store.getState().type).toBe("finished");
     });
 });
