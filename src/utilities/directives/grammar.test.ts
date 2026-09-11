@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DirectiveNode, expandItems, parseDirective } from "./grammar";
+import { DirectiveNode, parseDirective } from "./grammar";
 
 /** A compact rendering of a parse tree, so expectations read like the directives they describe. */
 const brief = (node: DirectiveNode): string =>
@@ -16,10 +16,6 @@ const parse = (comment: string) => {
     return result.type === "error" ? `ERROR: ${result.error}` : result.items.map(brief).join(" ");
 };
 
-const expand = (comment: string) => {
-    const result = parseDirective(comment);
-    return result.type === "error" ? `ERROR: ${result.error}` : expandItems(result.items).map(brief).join(" ");
-};
 
 describe("parseDirective", () => {
     it("parses a single value", () => {
@@ -97,19 +93,3 @@ describe("parseDirective", () => {
     });
 });
 
-describe("expandItems", () => {
-    it("leaves lists without repetition alone", () => {
-        expect(expand("1, 2, 3")).toBe("1 2 3");
-        expect(expand("(1, 2, 3), (4, 5, 6)")).toBe("(1 2 3) (4 5 6)");
-    });
-
-    it("expands a repetition where it sits", () => {
-        expect(expand("1, 3 * 2, 4")).toBe("1 2 2 2 4");
-        expect(expand("5 * (1, 2, 3)")).toBe("(1 2 3) (1 2 3) (1 2 3) (1 2 3) (1 2 3)");
-        expect(expand("5 * rand(-1, 1)")).toBe("rand(-1,1) rand(-1,1) rand(-1,1) rand(-1,1) rand(-1,1)");
-    });
-
-    it("does not expand inside a group, which is its own list", () => {
-        expect(expand("2 * (2 * 1)")).toBe("(2*1) (2*1)");
-    });
-});

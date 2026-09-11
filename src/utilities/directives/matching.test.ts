@@ -92,9 +92,8 @@ describe("nesting must be written with parentheses", () => {
 });
 
 describe("repetition", () => {
-    it("expands where it sits", () => {
-        expect(match("1, 3 * 2, 4", RUNTIME_ARRAY)).toEqual([1, 2, 2, 2, 4]);
-        expect(lengthOf("1, 3 * 2, 4", RUNTIME_ARRAY)).toBe(5);
+    it("describes an array, and is not shorthand for repeating inside a list", () => {
+        expect(match("1, 3 * 2, 4", RUNTIME_ARRAY)).toMatch(/i32 is not an array, so `3 \* \.\.\.` cannot fill it/);
     });
 
     it("sets the length of a runtime-sized array", () => {
@@ -114,13 +113,49 @@ describe("repetition", () => {
         );
     });
 
-    it("fills a vector, because three values is what a vec3 wants", () => {
-        expect(match("3 * 2", VEC3)).toEqual([2, 2, 2]);
+    it("is rejected on anything that is not an array", () => {
+        expect(match("3 * 2", VEC3)).toMatch(/is not an array/);
+        expect(match("2 * 1", SCALAR)).toMatch(/is not an array/);
+        expect(match("1, 3 * 2, 4", MIXED, MIXED_STRUCT)).toMatch(/is not an array/);
+    });
+
+    it("fills an array of arrays, where the nesting really is arrays", () => {
+        expect(match("2 * (3 * 1)", "@group(0) @binding(0) var<uniform> binding: array<array<i32, 3>, 2>;")).toEqual([
+            1, 1, 1, 1, 1, 1,
+        ]);
     });
 
     it("must match a declared length exactly", () => {
         expect(match("5 * (1, 2)", SIZED_ARRAY)).toMatch(/has 4 elements, but the directive gives 5/);
         expect(match("4 * (1, 2)", SIZED_ARRAY)).toEqual([1, 2, 1, 2, 1, 2, 1, 2]);
+    });
+});
+
+describe("a list on an array is one entry per element", () => {
+    it("gives one element per value for an array of scalars", () => {
+        expect(match("1, 2, 3", RUNTIME_ARRAY)).toEqual([1, 2, 3]);
+        expect(lengthOf("1, 2, 3", RUNTIME_ARRAY)).toBe(3);
+    });
+
+    it("gives one element per value for an array of vectors, each broadcast", () => {
+        expect(match("1, 2, 3", ARRAY_OF_VEC3)).toEqual([1, 1, 1, 2, 2, 2, 3, 3, 3]);
+        expect(lengthOf("1, 2, 3", ARRAY_OF_VEC3)).toBe(3);
+
+        const vec2s = "@group(0) @binding(0) var<storage, read> binding: array<vec2<i32>>;";
+        expect(match("1, 2, 3", vec2s)).toEqual([1, 1, 2, 2, 3, 3]);
+        expect(lengthOf("1, 2, 3", vec2s)).toBe(3);
+    });
+
+    it("needs parentheses to mean a single element instead", () => {
+        expect(match("(1, 2, 3)", ARRAY_OF_VEC3)).toEqual([1, 2, 3]);
+        expect(lengthOf("(1, 2, 3)", ARRAY_OF_VEC3)).toBe(1);
+    });
+});
+
+describe("comments that carry no numbers are not directives at all", () => {
+    it("is left to the caller, which passes them over rather than reporting them", () => {
+        // getDirectiveSource filters these out; matchDirective never sees them.
+        expect(match("the output buffer", RUNTIME_ARRAY)).toMatch(/^ERROR/);
     });
 });
 

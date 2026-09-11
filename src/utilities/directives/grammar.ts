@@ -2,7 +2,7 @@
  * The grammar of directive comments.
  *
  *     list   := item ("," item)*
- *     item   := number "*" item        repetition, expanded into the surrounding list
+ *     item   := number "*" item        an array of that many elements
  *            |  "(" list ")"           a nested struct, vector, matrix or array
  *            |  "rand" "(" n "," n ")" a random value in a range
  *            |  number
@@ -124,8 +124,3 @@ export const parseDirective = (comment: string): { type: "directive"; items: Dir
     return { type: "directive", items };
 };
 
-/** Repetitions are expanded where they sit, so `1, 3 * 2, 4` is five values rather than three. */
-export const expandItems = (items: DirectiveNode[]): DirectiveNode[] =>
-    items.flatMap((item) =>
-        item.type === "repeat" ? expandItems(Array.from({ length: item.count }, () => item.item)) : [item]
-    );

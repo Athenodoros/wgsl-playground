@@ -1,5 +1,5 @@
 import { Attribute } from "wgsl_reflect";
-import { DirectiveNode, expandItems, parseDirective } from "./grammar";
+import { DirectiveNode, parseDirective } from "./grammar";
 import { TypeShape } from "./typeShape";
 
 /**
@@ -16,14 +16,19 @@ import { TypeShape } from "./typeShape";
  * everything beneath it, so `// 0` still works whatever the type turns out to be.
  */
 
-/** The text of the directive in force, or null if the binding's attribute lines carry no comment. */
+/**
+ * The text of the directive in force, or null if there is none.
+ *
+ * A comment with no digits in it was never an attempt at a directive - it is prose about the
+ * binding - so it is passed over rather than reported as a broken one.
+ */
 export const getDirectiveSource = (attributes: Attribute[] | null, wgsl: string): string | null => {
     const codeLines = wgsl.split("\n");
 
     return (
         attributes
             ?.map((attribute) => codeLines[attribute.line - 1]?.match(/\/\/\/?(.*)/)?.[1]?.trim() || null)
-            ?.find((comment) => comment !== null) ?? null
+            ?.find((comment) => comment !== null && /\d/.test(comment)) ?? null
     );
 };
 
@@ -73,37 +78,53 @@ export const matchDirective = (comment: string, shape: TypeShape): DirectiveMatc
         if (isSingleValue(node)) return broadcast(node, target);
         if (node.type === "group") return matchItems(node.items, target);
 
-        return matchItems([node], target);
+        // `count * item` describes an array and nothing else. It is not shorthand for repeating a
+        // value inside a list, so `1, 3 * 2, 4` on an array<i32> is an error rather than five ints.
+        if (target.kind !== "array") {
+            error = `${target.label} is not an array, so \`${node.count} * ...\` cannot fill it`;
+            return;
+        }
+
+        if (target.count !== null && node.count !== target.count) {
+            error = `${target.label} has ${target.count} elements, but the directive gives ${node.count}`;
+            return;
+        }
+
+        if (target.count === null) runtimeLength = node.count;
+        for (let index = 0; index < node.count; index++) matchNode(node.item, target.element);
     };
 
     const matchItems = (items: DirectiveNode[], target: TypeShape): void => {
         if (error !== null) return;
-        const expanded = expandItems(items);
 
-        if (expanded.length === 1 && isSingleValue(expanded[0])) return broadcast(expanded[0], target);
+        if (items.length === 1) {
+            // One value fills everything below it, and one repetition describes the whole array.
+            if (isSingleValue(items[0])) return broadcast(items[0], target);
+            if (items[0].type === "repeat") return matchNode(items[0], target);
+        }
 
         if (target.kind === "scalar") {
-            error = `${target.label} is a single value, but the directive gives ${expanded.length}`;
+            error = `${target.label} is a single value, but the directive gives ${items.length}`;
             return;
         }
 
         if (target.kind === "compound") {
-            if (expanded.length !== target.children.length) {
-                error = `${target.label} has ${target.children.length} components, but the directive gives ${expanded.length}`;
+            if (items.length !== target.children.length) {
+                error = `${target.label} has ${target.children.length} components, but the directive gives ${items.length}`;
                 return;
             }
 
-            expanded.forEach((item, index) => matchNode(item, target.children[index]));
+            items.forEach((item, index) => matchNode(item, target.children[index]));
             return;
         }
 
-        if (target.count !== null && expanded.length !== target.count) {
-            error = `${target.label} has ${target.count} elements, but the directive gives ${expanded.length}`;
+        if (target.count !== null && items.length !== target.count) {
+            error = `${target.label} has ${target.count} elements, but the directive gives ${items.length}`;
             return;
         }
 
-        if (target.count === null) runtimeLength = expanded.length;
-        expanded.forEach((item) => matchNode(item, target.element));
+        if (target.count === null) runtimeLength = items.length;
+        items.forEach((item) => matchNode(item, target.element));
     };
 
     matchItems(parsed.items, shape);
