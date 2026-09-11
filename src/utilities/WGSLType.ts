@@ -1,5 +1,6 @@
 import { ArrayInfo, StructInfo, TemplateInfo, TypeInfo } from "wgsl_reflect";
 import { range, repeat } from "./data";
+import { getDirectiveValueGenerator } from "./directives";
 import { WgslBinding } from "./types";
 
 export class WGSLType {
@@ -235,40 +236,7 @@ const getDefaultValueForAttributes = (
     type: WGSLType,
     attributes: WgslBinding["attributes"],
     wgsl: string
-): DefaultValueReturn => {
-    const codeLines = wgsl.split("\n");
-
-    const spec =
-        attributes
-            ?.map((a) => {
-                const line = a.line - 1;
-                const comment = codeLines[line].match(/\/\/\/?(.*)/)?.[1]?.trim();
-                if (!comment) return null;
-                if (!isNaN(Number(comment))) return () => Number(comment);
-
-                const functionCall = comment.match(/^(\w+)\((.*)\)$/);
-                if (functionCall === null) return null;
-
-                const [_, functionName, rawArgs] = functionCall;
-                const args = rawArgs
-                    .split(",")
-                    .map((a) => a.trim())
-                    .filter((a) => a);
-
-                if (functionName === "rand") {
-                    if (args.length !== 2) return null;
-                    const [min, max] = args.map((a) => Number(a));
-                    if (isNaN(min) || isNaN(max)) return null;
-
-                    return () => Math.random() * (max - min) + min;
-                }
-
-                return null;
-            })
-            ?.find((c) => c !== null) ?? null;
-
-    return type.getDefaultValue(spec ?? (() => 1));
-};
+): DefaultValueReturn => type.getDefaultValue(getDirectiveValueGenerator(attributes, wgsl) ?? (() => 1));
 
 const getStringParseResults = (type: TypeInfo, structs: StructInfo[], value: string) => {
     const spec = getBufferSpec(type, structs);
