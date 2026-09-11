@@ -191,3 +191,40 @@ describe("comments that are not directives", () => {
         expect(match("(1, 2", VEC3)).toMatch(/^ERROR/);
     });
 });
+
+describe("one group fills an array of known length", () => {
+    it("repeats a struct over an array without counting the elements out", () => {
+        expect(match("((150, 110), 0.12, 1)", SOURCE_ARRAY, SOURCE_STRUCT)).toEqual([
+            150, 110, 0.12, 1, 150, 110, 0.12, 1, 150, 110, 0.12, 1, 150, 110, 0.12, 1,
+        ]);
+    });
+
+    it("agrees with spelling the repetition out", () => {
+        expect(match("((150, 110), 0.12, 1)", SOURCE_ARRAY, SOURCE_STRUCT)).toEqual(
+            match("4 * ((150, 110), 0.12, 1)", SOURCE_ARRAY, SOURCE_STRUCT)
+        );
+    });
+
+    it("draws a separate rand for every element, rather than one for all of them", () => {
+        const values = match("((rand(0, 640), rand(0, 360)), rand(0, 1), rand(0.5, 1.5))", SOURCE_ARRAY, SOURCE_STRUCT);
+        expect(values).toHaveLength(16);
+        expect(new Set(values as number[]).size).toBe(16);
+    });
+
+    it("fills an array of vectors too", () => {
+        expect(match("(1, 2, 3)", "@group(0) @binding(0) var<uniform> binding: array<vec3<f32>, 2>;")).toEqual([
+            1, 2, 3, 1, 2, 3,
+        ]);
+    });
+
+    it("still means one element for a runtime-sized array, which has no length of its own", () => {
+        expect(match("(1, 2, 3)", ARRAY_OF_VEC3)).toEqual([1, 2, 3]);
+        expect(lengthOf("(1, 2, 3)", ARRAY_OF_VEC3)).toBe(1);
+    });
+
+    it("still rejects a group that does not fit the element", () => {
+        expect(match("(150, 110, 0.12, 1)", SOURCE_ARRAY, SOURCE_STRUCT)).toMatch(
+            /Source has 3 components, but the directive gives 4/
+        );
+    });
+});
