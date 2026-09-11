@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { WGSLType } from "../../utilities/WGSLType";
 
 export const useVariableDisplayProps = (
@@ -7,7 +7,11 @@ export const useVariableDisplayProps = (
     type: WGSLType
 ) => {
     const [localValue, setLocalValue] = useState(input);
-    useEffect(() => setLocalValue(input), [input]);
+    const [prevInput, setPrevInput] = useState(input);
+    if (input !== prevInput) {
+        setPrevInput(input);
+        setLocalValue(input);
+    }
     const [error, setError] = useState(false);
 
     const handleChange = useCallback(

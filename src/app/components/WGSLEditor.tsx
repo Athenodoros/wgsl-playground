@@ -1,4 +1,4 @@
-import { Button, Menu, MenuItem, Popover, Section } from "@blueprintjs/core";
+import { Button, Menu, MenuItem, PopoverNext, Section } from "@blueprintjs/core";
 import { Editor } from "@monaco-editor/react";
 import { useState } from "react";
 import defaultComputeShader from "../../examples/default_compute_shader.wgsl";
@@ -25,8 +25,8 @@ export const WGSLEditor: React.FC = () => {
                 className="grow shrink min-w-0 flex flex-col"
                 rightElement={
                     <div className="flex items-center gap-2">
-                        <Popover
-                            position="bottom"
+                        <PopoverNext
+                            placement="bottom"
                             content={
                                 <Menu>
                                     <MenuItem
@@ -47,7 +47,7 @@ export const WGSLEditor: React.FC = () => {
                             <Button variant="outlined" intent="primary" endIcon="chevron-down">
                                 Load Example
                             </Button>
-                        </Popover>
+                        </PopoverNext>
                         <ShareButton />
                     </div>
                 }
