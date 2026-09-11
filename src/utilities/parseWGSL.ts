@@ -49,6 +49,7 @@ export const parseWGSL = (
                 type: new WGSLType(binding.type, reflect.reflect.structs),
                 attributes: binding.attributes,
                 directive: getDirectiveSource(binding.attributes, wgsl),
+                warning: input.warning ?? null,
                 resourceType: binding.resourceType,
                 writable: binding.access === "write" || binding.access === "read_write",
                 input: input.value,

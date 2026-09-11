@@ -1,5 +1,5 @@
-@group(0) @binding(0) var<storage, read> input_array: array<i32>; /// rand(0, 100)
-@group(0) @binding(1) var<storage, read_write> cumulative_offsets: array<i32>; /// 0
+@group(0) @binding(0) var<storage, read> input_array: array<i32>; /// 6 * rand(0, 100)
+@group(0) @binding(1) var<storage, read_write> cumulative_offsets: array<i32>; /// 6 * 0
 @group(0) @binding(2) var<storage, read_write> total_sum: i32; /// 0
 
 const workgroup_length : u32 = 128;

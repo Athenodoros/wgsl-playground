@@ -1,14 +1,20 @@
 import { ArrayInfo, StructInfo, TemplateInfo, TypeInfo } from "wgsl_reflect";
 import { range, repeat } from "./data";
-import { getDirectiveValueGenerator } from "./directives";
 import { WgslBinding } from "./types";
+import { getDirectiveSource, getTypeShape, matchDirective } from "./directives";
+
+/** How long a runtime-sized array is when nothing says otherwise. */
+export const DEFAULT_RUNTIME_ARRAY_LENGTH = 6;
 
 export class WGSLType {
     constructor(private type: TypeInfo, private structs: StructInfo[]) {}
 
     getDisplay = () => getTypeDisplay(this.type);
-    getDefaultValue = (getDefaultValue: () => number = () => 1) =>
-        getDefaultValueForType(this.type, this.structs, getDefaultValue);
+    getDefaultValue = (
+        getDefaultValue: () => number = () => 1,
+        runtimeArrayLength: number = DEFAULT_RUNTIME_ARRAY_LENGTH
+    ) => getDefaultValueForType(this.type, this.structs, getDefaultValue, runtimeArrayLength);
+    getShape = () => getTypeShape(this.type, this.structs);
     getDefaultValueForAttributes = (attributes: WgslBinding["attributes"], wgsl: string) =>
         getDefaultValueForAttributes(this, attributes, wgsl);
     getValuesFromString = (value: string) => getValuesFromStringForType(this.type, this.structs, value);
@@ -157,12 +163,15 @@ const getArrayLine = (line: BufferComponent[], addComma: boolean, getDefaultValu
         )
         .join(", ") + (addComma ? "," : "");
 
-type DefaultValueReturn = { type: "error"; error: string } | { type: "values"; value: string };
+type DefaultValueReturn =
+    | { type: "error"; error: string }
+    | { type: "values"; value: string; warning?: string };
 
 const getDefaultValueForType = (
     type: TypeInfo,
     structs: StructInfo[],
-    getDefaultValue: () => number = () => 1
+    getDefaultValue: () => number = () => 1,
+    runtimeArrayLength: number = DEFAULT_RUNTIME_ARRAY_LENGTH
 ): DefaultValueReturn => {
     if (["f16", "bool"].includes(type.name))
         return { type: "error", error: `${type.name} not supported due to limited browser support` };
@@ -211,7 +220,7 @@ const getDefaultValueForType = (
     }
 
     if (type.isArray) {
-        const lines = spec.repeat ? repeat(spec.lines, 6) : spec.lines;
+        const lines = spec.repeat ? repeat(spec.lines, runtimeArrayLength) : spec.lines;
 
         const value =
             lines[0].length === 1
@@ -236,7 +245,29 @@ const getDefaultValueForAttributes = (
     type: WGSLType,
     attributes: WgslBinding["attributes"],
     wgsl: string
-): DefaultValueReturn => type.getDefaultValue(getDirectiveValueGenerator(attributes, wgsl) ?? (() => 1));
+): DefaultValueReturn => {
+    const comment = getDirectiveSource(attributes, wgsl);
+    if (comment === null) return type.getDefaultValue();
+
+    const shape = type.getShape();
+    if (shape === null) return type.getDefaultValue();
+
+    const match = matchDirective(comment, shape);
+    // A comment that does not describe the binding is reported and ignored, rather than stretched
+    // into something that happens to fit - the point of the directive is that it can be read.
+    if (match.type === "error") {
+        const fallback = type.getDefaultValue();
+        if (fallback.type === "error") return fallback;
+
+        return { ...fallback, warning: `\`${comment}\` is not a valid directive: ${match.error}` };
+    }
+
+    let index = 0;
+    return type.getDefaultValue(
+        () => match.values[index++] ?? 1,
+        match.runtimeLength ?? DEFAULT_RUNTIME_ARRAY_LENGTH
+    );
+};
 
 const getStringParseResults = (type: TypeInfo, structs: StructInfo[], value: string) => {
     const spec = getBufferSpec(type, structs);
