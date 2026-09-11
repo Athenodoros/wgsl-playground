@@ -3,6 +3,7 @@ import { Editor } from "@monaco-editor/react";
 import { useState } from "react";
 import defaultComputeShader from "../../examples/default_compute_shader.wgsl";
 import defaultVertexShader from "../../examples/default_vertex_shader.wgsl";
+import interferencePattern from "../../examples/interference_pattern.wgsl";
 import { useAppState } from "../../state";
 import { INITIAL_APP_STATE } from "../../state/defaults";
 import { noop } from "../../utilities/data";
@@ -40,6 +41,12 @@ export const WGSLEditor: React.FC = () => {
                                         text="CumSum Compute Shader"
                                         onClick={setExample(defaultComputeShader.replace(/\/\/\//g, "//"))}
                                         disabled={wgsl === defaultComputeShader.replace(/\/\/\//g, "//")}
+                                    />
+                                    <MenuItem
+                                        icon="heatmap"
+                                        text="Interference Pattern"
+                                        onClick={setExample(interferencePattern.replace(/\/\/\//g, "//"))}
+                                        disabled={wgsl === interferencePattern.replace(/\/\/\//g, "//")}
                                     />
                                 </Menu>
                             }

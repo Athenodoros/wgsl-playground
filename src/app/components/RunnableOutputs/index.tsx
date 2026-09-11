@@ -10,6 +10,14 @@ export const RunnableOutputs: React.FC = () => {
     const results = useAppState((state) => (state.type === "finished" ? state.results : null));
     const device = useAppState((state) => state.device);
 
+    // A render runnable always draws to the canvas, and a compute one does when it writes a storage
+    // texture - which goes there rather than into the outputs below, being far too big to read.
+    const drawsToCanvas = useAppState(
+        (state) =>
+            state.selected?.type === "render" ||
+            (state.selected?.type === "compute" && state.bindings.some((binding) => binding.kind === "texture"))
+    );
+
     if (device === null) {
         return (
             <SectionCard padded={true}>
@@ -34,7 +42,7 @@ export const RunnableOutputs: React.FC = () => {
 
     return (
         <SectionCard padded={false} className="my-4 flex flex-col gap-4">
-            <OutputCanvas hidden={output?.type !== "render" || (results !== null && results.type !== "outputs")} />
+            <OutputCanvas hidden={!drawsToCanvas || (results !== null && results.type !== "outputs")} />
             {results?.type === "errors"
                 ? results.errors.map((error, idx) => (
                       <div className="mx-4" key={idx}>
