@@ -16,7 +16,7 @@ export const StructDisplay: React.FC = () => {
             startClosed={false}
         >
             {structs.length ? (
-                <SectionCard padded={true}>
+                <SectionCard padded={true} className="flex flex-col gap-5">
                     {structs.map((s) => (
                         <SingleStructDisplay key={s.name} struct={s} />
                     ))}

@@ -35,7 +35,13 @@ export const RunnableOutputs: React.FC = () => {
         return (
             <SectionCard padded={true}>
                 <OutputCanvas hidden={true} />
-                <NonIdealState icon="bug" title="Parsing Error" description={<pre>{parseError}</pre>} />
+                <NonIdealState
+                    icon="bug"
+                    title="Parsing Error"
+                    // A parse error can be a sentence rather than a line of code - the list of
+                    // storage texture formats, say - so it wraps instead of running off the side.
+                    description={<pre className="whitespace-pre-wrap text-left">{parseError}</pre>}
+                />
             </SectionCard>
         );
     }
