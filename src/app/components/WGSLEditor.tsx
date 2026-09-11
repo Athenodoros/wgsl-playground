@@ -6,6 +6,7 @@ import defaultVertexShader from "../../examples/default_vertex_shader.wgsl";
 import { useAppState } from "../../state";
 import { INITIAL_APP_STATE } from "../../state/defaults";
 import { noop } from "../../utilities/data";
+import { ShareButton } from "./ShareButton";
 
 export const WGSLEditor: React.FC = () => {
     const wgsl = useAppState((state) => state.wgsl);
@@ -23,29 +24,32 @@ export const WGSLEditor: React.FC = () => {
                 title="Editor"
                 className="grow shrink min-w-0 flex flex-col"
                 rightElement={
-                    <Popover
-                        position="bottom"
-                        content={
-                            <Menu>
-                                <MenuItem
-                                    icon="media"
-                                    text="Triangle Vertex Shader"
-                                    onClick={setExample(defaultVertexShader.replace(/\/\/\//g, "//"))} // vite-plugin-glsl mangles comments unless they have triple slashes...
-                                    disabled={wgsl === defaultVertexShader.replace(/\/\/\//g, "//")}
-                                />
-                                <MenuItem
-                                    icon="derive-column"
-                                    text="CumSum Compute Shader"
-                                    onClick={setExample(defaultComputeShader.replace(/\/\/\//g, "//"))}
-                                    disabled={wgsl === defaultComputeShader.replace(/\/\/\//g, "//")}
-                                />
-                            </Menu>
-                        }
-                    >
-                        <Button variant="outlined" intent="primary" endIcon="chevron-down">
-                            Load Example
-                        </Button>
-                    </Popover>
+                    <div className="flex items-center gap-2">
+                        <Popover
+                            position="bottom"
+                            content={
+                                <Menu>
+                                    <MenuItem
+                                        icon="media"
+                                        text="Triangle Vertex Shader"
+                                        onClick={setExample(defaultVertexShader.replace(/\/\/\//g, "//"))} // vite-plugin-glsl mangles comments unless they have triple slashes...
+                                        disabled={wgsl === defaultVertexShader.replace(/\/\/\//g, "//")}
+                                    />
+                                    <MenuItem
+                                        icon="derive-column"
+                                        text="CumSum Compute Shader"
+                                        onClick={setExample(defaultComputeShader.replace(/\/\/\//g, "//"))}
+                                        disabled={wgsl === defaultComputeShader.replace(/\/\/\//g, "//")}
+                                    />
+                                </Menu>
+                            }
+                        >
+                            <Button variant="outlined" intent="primary" endIcon="chevron-down">
+                                Load Example
+                            </Button>
+                        </Popover>
+                        <ShareButton />
+                    </div>
                 }
             >
                 <div className="bg-slate-200 p-2 grow shrink min-w-0">
@@ -56,7 +60,7 @@ export const WGSLEditor: React.FC = () => {
                         onMount={(editor) =>
                             // Extra currying because react calls functions to get the new state value
                             setSetEditorValue(
-                                (_state: unknown) => (value: string) => editor.getModel()?.setValue(value)
+                                (_state: unknown) => (value: string) => editor.getModel()?.setValue(value),
                             )
                         }
                     />
