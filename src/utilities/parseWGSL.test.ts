@@ -44,25 +44,43 @@ describe("the interference pattern example", () => {
         ]);
     });
 
-    it("takes the texture's size from its directive comment", () => {
+    it("says nothing about the texture's size, and so gets the canvas'", () => {
         const field = texture(parse(EXAMPLE).bindings, "field");
 
-        expect([field.width, field.height]).toEqual([640, 360]);
+        expect([field.width, field.height]).toEqual([OUTPUT_CANVAS_WIDTH, OUTPUT_CANVAS_HEIGHT]);
         expect(field.format).toBe("rgba8unorm");
+        expect(field.directive).toBeNull();
         expect(field.warning).toBeNull();
     });
 
-    it("dispatches one work group per texel", () => {
+    it("dispatches 8x8 work groups that cover the texture exactly", () => {
         const { selected } = parse(EXAMPLE);
+        const [x, y] = selected?.type === "compute" ? selected.threads : [0, 0];
 
-        expect(selected?.type).toBe("compute");
-        expect(selected?.type === "compute" && selected.threads).toEqual([640, 360, 1]);
+        expect(selected?.type === "compute" && selected.threads).toEqual([80, 45, 1]);
+        expect([x * 8, y * 8]).toEqual([OUTPUT_CANVAS_WIDTH, OUTPUT_CANVAS_HEIGHT]);
     });
 
-    it("fills the sources from the directive, rather than leaving them all at one", () => {
+    it("gives each of the four sources its own random values, rather than one set for all", () => {
         const scene = parse(EXAMPLE).bindings.find((binding) => binding.name === "scene");
+        if (scene?.kind !== "buffer") throw new Error("scene is not a buffer binding");
 
-        expect(scene?.kind === "buffer" && scene.input).toContain("150.0, 110.0, 0.12, 1.0");
+        const values = scene.type.getValuesFromString(scene.input) ?? [];
+        expect(values).toHaveLength(16);
+        expect(new Set(values).size).toBe(16);
+
+        // Positions land on the canvas, frequencies stay resolvable, amplitudes sit around one.
+        const sources = [0, 4, 8, 12].map((at) => values.slice(at, at + 4) as number[]);
+        for (const [x, y, frequency, amplitude] of sources) {
+            expect(x).toBeGreaterThanOrEqual(0);
+            expect(x).toBeLessThanOrEqual(OUTPUT_CANVAS_WIDTH);
+            expect(y).toBeGreaterThanOrEqual(0);
+            expect(y).toBeLessThanOrEqual(OUTPUT_CANVAS_HEIGHT);
+            expect(frequency).toBeGreaterThanOrEqual(0);
+            expect(frequency).toBeLessThanOrEqual(1);
+            expect(amplitude).toBeGreaterThanOrEqual(0.5);
+            expect(amplitude).toBeLessThanOrEqual(1.5);
+        }
     });
 });
 
