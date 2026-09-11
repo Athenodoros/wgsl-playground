@@ -83,8 +83,12 @@ const getDirectiveTerms = (attributes: Attribute[] | null, wgsl: string): Direct
  * usable directive - callers decide what to fall back to.
  *
  * Terms are consumed in source order, and the list repeats from the start if the binding has more
- * fields than the list has terms. Each term is evaluated afresh every time it comes round, so a
- * `rand` term gives a different value in each repetition rather than the same one throughout.
+ * fields than the list has terms. Repeating rather than padding the tail is what makes a single
+ * number and a bare `rand(min, max)` the trivial one-term cases of a list, and it lets an array of
+ * a compound type be described by one element's worth of values.
+ *
+ * Each term is evaluated afresh every time it comes round, so a `rand` term gives a different value
+ * in each repetition rather than the same one throughout.
  */
 export const getDirectiveValueGenerator = (attributes: Attribute[] | null, wgsl: string): (() => number) | null => {
     const terms = getDirectiveTerms(attributes, wgsl);
