@@ -118,7 +118,7 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
                 selected: {
                     ...state.selected,
                     arguments: state.selected.arguments.map((arg) =>
-                        arg.name === name ? { ...arg, input, buffer } : arg
+                        arg.name === name ? { ...arg, input, buffer } : arg,
                     ),
                 },
             });
@@ -128,7 +128,7 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
 
 const updateParseResultsFromPrevious = (
     result: ParseResults,
-    state: AppFailedParseState | AppRunningState | AppFinishedState
+    state: AppFailedParseState | AppRunningState | AppFinishedState,
 ) => {
     for (const binding of result.bindings) {
         const oldBinding =
@@ -168,8 +168,7 @@ const updateParseResultsFromPrevious = (
     // instead of being quietly discarded.
     if (result.selected?.type === "compute") {
         const previous = state.selected?.type === "compute" ? (state.selected as RunnableComputeShader) : null;
-        if (previous && previous.directive === result.selected.directive)
-            result.selected.threads = previous.threads;
+        if (previous && previous.directive === result.selected.directive) result.selected.threads = previous.threads;
     } else if (result.selected?.type === "render") {
         const previous = state.selected?.type === "render" ? (state.selected as RunnableRender) : null;
         if (previous) {
@@ -180,24 +179,22 @@ const updateParseResultsFromPrevious = (
         // Only a function has arguments to carry over, and the selection before this edit need not
         // have been one - the compute and render branches above already check, and this did not.
         const previous = state.selected?.type === "function" ? state.selected : null;
+        if (!previous) {
+            return;
+        }
+
         const current = result.selected;
 
-        if (previous) {
-            for (const idx of range(current.arguments.length)) {
-                const arg = current.arguments[idx];
-                const oldArg = previous.arguments.find((a) => a.name === arg.name) ?? previous.arguments[idx];
-                if (oldArg === undefined) continue;
+        for (const idx of range(current.arguments.length)) {
+            const arg = current.arguments[idx];
+            const oldArg = previous.arguments.find((a) => a.name === arg.name) ?? previous.arguments[idx];
+            if (oldArg === undefined) continue;
 
-                const newDefault = arg.type.getDefaultValue();
-                const oldDefault = oldArg.type.getDefaultValue();
-                if (
-                    newDefault.type === "values" &&
-                    oldDefault.type === "values" &&
-                    newDefault.value === oldDefault.value
-                ) {
-                    arg.input = oldArg.input;
-                    arg.buffer = oldArg.buffer;
-                }
+            const newDefault = arg.type.getDefaultValue();
+            const oldDefault = oldArg.type.getDefaultValue();
+            if (newDefault.type === "values" && oldDefault.type === "values" && newDefault.value === oldDefault.value) {
+                arg.input = oldArg.input;
+                arg.buffer = oldArg.buffer;
             }
         }
     } else if (result.selected) assertNever(result.selected);
