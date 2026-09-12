@@ -7,7 +7,7 @@ import { VariableDisplay } from "../../shared/VariableDisplay";
 import { RunnableDropdown } from "./RunnableDropdown";
 
 export const RunnableInputs: React.FC = () => {
-    const output = useAppState((state) => state.selected);
+    const output = useAppState((state) => state.sequence[0] ?? null);
     const setOutput = useAppState((state) => state.selectRunnable);
     const options = useAppState((state) => state.runnables);
 

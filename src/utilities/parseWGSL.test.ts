@@ -54,7 +54,7 @@ describe("the interference pattern example", () => {
     });
 
     it("dispatches 8x8 work groups that cover the texture exactly", () => {
-        const { selected } = parse(EXAMPLE);
+        const [selected] = parse(EXAMPLE).sequence;
         const [x, y] = selected?.type === "compute" ? selected.threads : [0, 0];
 
         expect(selected?.type === "compute" && selected.threads).toEqual([80, 45, 1]);

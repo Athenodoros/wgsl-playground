@@ -76,7 +76,7 @@ export const parseWGSL = (
         structs: reflect.reflect.structs,
         bindings: bindings as WgslBinding[],
         runnables,
-        selected: runnables[0] ?? null,
+        sequence: runnables.slice(0, 1),
     };
 };
 

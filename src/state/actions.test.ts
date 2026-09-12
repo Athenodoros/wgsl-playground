@@ -56,24 +56,24 @@ const DREW_SOMETHING: RunnerResults = { type: "outputs", bindings: [], returned:
 describe("setWGSL", () => {
     it("selects a function after an edit from a shader that had none", () => {
         const store = storeShowing(RENDER_SHADER);
-        expect(store.getState().selected?.type).toBe("render");
+        expect(store.getState().sequence[0]?.type).toBe("render");
 
         store.actions.setWGSL(FUNCTION_SHADER);
 
-        const selected = store.getState().selected;
+        const [selected] = store.getState().sequence;
         expect(selected?.type).toBe("function");
         expect(selected?.type === "function" && selected.arguments.map((a) => a.name)).toEqual(["a", "b"]);
     });
 
     it("keeps argument values across an edit that leaves the function alone", () => {
         const store = storeShowing(FUNCTION_SHADER);
-        const selected = store.getState().selected;
+        const [selected] = store.getState().sequence;
         if (selected?.type !== "function") throw new Error("expected a function to be selected");
 
         store.actions.setRunnableInput("a", "7.0", new ArrayBuffer(4));
         store.actions.setWGSL(FUNCTION_SHADER + "\n// an edit elsewhere\n");
 
-        const after = store.getState().selected;
+        const [after] = store.getState().sequence;
         expect(after?.type === "function" && after.arguments.find((a) => a.name === "a")?.input).toBe("7.0");
     });
 
@@ -81,7 +81,7 @@ describe("setWGSL", () => {
         const store = storeShowing(FUNCTION_SHADER);
         store.actions.setWGSL(RENDER_SHADER);
 
-        expect(store.getState().selected?.type).toBe("render");
+        expect(store.getState().sequence[0]?.type).toBe("render");
     });
 });
 

@@ -109,7 +109,8 @@ export interface RunnableRender {
 export type Runnable = RunnableComputeShader | RunnableRender | RunnableFunction;
 
 export interface ParseResults {
-    selected: Runnable | null;
+    /** The runnables to dispatch, in order, sharing one set of bindings between them. */
+    sequence: Runnable[];
     runnables: Runnable[];
     bindings: WgslBinding[];
     structs: StructInfo[];
