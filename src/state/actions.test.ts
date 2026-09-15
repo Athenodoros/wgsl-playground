@@ -69,6 +69,18 @@ describe("setWGSL", () => {
         expect(after.type === "function" && after.runnable.arguments.find((a) => a.name === "a")?.input).toBe("7.0");
     });
 
+    // Clearing the target is allowed, and used to last only until the next keystroke: an edit found
+    // nothing to carry over and fell back to the default, which looks identical to the target having
+    // been emptied out by the edit itself.
+    it("leaves a target cleared by hand cleared across an edit elsewhere", () => {
+        const store = storeShowing(RENDER_SHADER);
+        store.actions.setRunTarget({ type: "none" });
+
+        store.actions.setWGSL(RENDER_SHADER + "\n// an edit elsewhere\n");
+
+        expect(store.getState().target.type).toBe("none");
+    });
+
     it("does not carry a compute selection's counts onto an unrelated shader", () => {
         const store = storeShowing(FUNCTION_SHADER);
         store.actions.setWGSL(RENDER_SHADER);

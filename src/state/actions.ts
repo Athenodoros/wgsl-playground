@@ -179,7 +179,13 @@ const updateParseResultsFromPrevious = (
         }
     }
 
-    result.target = carryOverTarget(state.target, result.runnables) ?? getDefaultTarget(result.runnables);
+    // Nothing selected is a choice, and an edit elsewhere in the file is no reason to undo it. The
+    // fallback is for a target the edit emptied out, and for a shader that had nothing to run in the
+    // first place, where picking up whatever the edit just added is the point.
+    const clearedByHand = state.target.type === "none" && state.runnables.length > 0;
+    result.target =
+        carryOverTarget(state.target, result.runnables) ??
+        (clearedByHand ? { type: "none" } : getDefaultTarget(result.runnables));
 };
 
 /**

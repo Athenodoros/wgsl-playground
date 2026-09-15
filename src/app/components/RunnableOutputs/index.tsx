@@ -9,6 +9,7 @@ export const RunnableOutputs: React.FC = () => {
     const selectedFunction = useAppState((state) => (state.target.type === "function" ? state.target.runnable : null));
     const results = useAppState((state) => (state.type === "finished" ? state.results : null));
     const device = useAppState((state) => state.device);
+    const hasRunTarget = useAppState((state) => state.target.type !== "none");
 
     // A render runnable always draws to the canvas, and a compute one does when it writes a storage
     // texture - which goes there rather than into the outputs below, being far too big to read.
@@ -41,6 +42,19 @@ export const RunnableOutputs: React.FC = () => {
                     // A parse error can be a sentence rather than a line of code - the list of
                     // storage texture formats, say - so it wraps instead of running off the side.
                     description={<pre className="whitespace-pre-wrap text-left">{parseError}</pre>}
+                />
+            </SectionCard>
+        );
+    }
+
+    if (!hasRunTarget) {
+        return (
+            <SectionCard padded={true}>
+                <OutputCanvas hidden={true} />
+                <NonIdealState
+                    icon="widget"
+                    title="Nothing Selected"
+                    description="Pick something to run from the list above."
                 />
             </SectionCard>
         );

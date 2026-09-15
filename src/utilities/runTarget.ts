@@ -51,3 +51,34 @@ export const targetRunnables = (target: RunTarget): Runnable[] => {
     if (target.type === "compute") return target.passes;
     return [target.runnable];
 };
+
+/**
+ * The target after picking a runnable out of the list of them.
+ *
+ * Compute passes accumulate, in the order they are picked, since they are the only thing that
+ * chains; anything else replaces the target outright. Picking one already in the target takes it
+ * back out, which is how a chain is shortened and how the last of anything is cleared.
+ */
+export const toggleRunnable = (target: RunTarget, runnable: Runnable): RunTarget => {
+    if (target.type === "compute" && runnable.type === "compute") {
+        const kept = target.passes.filter((pass) => pass.id !== runnable.id);
+        return kept.length < target.passes.length ? computeTarget(kept) : computeTarget([...target.passes, runnable]);
+    }
+
+    return targetRunnables(target).some((entry) => entry.id === runnable.id)
+        ? { type: "none" }
+        : singleTarget(runnable);
+};
+
+/**
+ * The target with one of the runnables it names swapped for an edited copy of itself.
+ *
+ * Counts live on the runnable, so changing one is replacing it. It is found by ID rather than by
+ * identity, because replacing it is exactly what breaks the identity.
+ */
+export const updateRunnable = (target: RunTarget, updated: Runnable): RunTarget => {
+    if (target.type === "compute" && updated.type === "compute")
+        return computeTarget(target.passes.map((pass) => (pass.id === updated.id ? updated : pass)));
+
+    return targetRunnables(target).some((entry) => entry.id === updated.id) ? singleTarget(updated) : target;
+};
