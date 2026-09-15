@@ -1,13 +1,37 @@
 import { StoreApi } from "zustand";
 import { noop, range } from "../utilities/data";
 import { parseWGSL } from "../utilities/parseWGSL";
-import { computeTarget } from "../utilities/runTarget";
+import { computeTarget, resolveRunOrder, targetRunnables } from "../utilities/runTarget";
 import { runWGSLFunction } from "../utilities/runWGSLFunction";
-import { ParseResults, RunTarget, Runnable, RunnableFunction } from "../utilities/types";
+import { ParseResults, RunTarget, Runnable, RunnableComputeShader, RunnableFunction } from "../utilities/types";
 import { AppActions, AppFailedParseState, AppFinishedState, AppRunningState, AppState } from "./types";
 
 export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi<AppState>["getState"]): AppActions => {
     let cancel: () => void = noop;
+
+    const applyWGSL = (wgsl: string, source: CodeSource) => {
+        const state = get();
+        if (state.wgsl === wgsl) return;
+        if (state.type === "loading") {
+            set({ ...state, wgsl });
+            return;
+        }
+
+        const result = parseWGSL(wgsl);
+        if (result.type === "failed-parse") {
+            set({ ...state, ...result, wgsl }, true);
+            return;
+        }
+
+        if (result.runnables.length === 0) {
+            set({ ...state, type: "failed-parse", error: "No runnable functions found", wgsl }, true);
+            return;
+        }
+
+        updateParseResultsFromPrevious(result, state, source);
+
+        startGPUProcessing({ ...state, ...result, wgsl });
+    };
 
     const startGPUProcessing = (state: AppRunningState) => {
         set(state, true);
@@ -63,30 +87,9 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
             else startGPUProcessing({ ...state, ...result, canvas, device: state.device });
         },
         setWGSL: (wgsl: string | undefined) => {
-            if (wgsl === undefined) return;
-
-            const state = get();
-            if (state.wgsl === wgsl) return;
-            if (state.type === "loading") {
-                set({ ...state, wgsl });
-                return;
-            }
-
-            const result = parseWGSL(wgsl);
-            if (result.type === "failed-parse") {
-                set({ ...state, ...result, wgsl }, true);
-                return;
-            }
-
-            if (result.runnables.length === 0) {
-                set({ ...state, type: "failed-parse", error: "No runnable functions found", wgsl }, true);
-                return;
-            }
-
-            updateParseResultsFromPrevious(result, state);
-
-            startGPUProcessing({ ...state, ...result, wgsl });
+            if (wgsl !== undefined) applyWGSL(wgsl, "edit");
         },
+        loadExample: (wgsl: string) => applyWGSL(wgsl, "example"),
         setBindingInput: (id: string, input: string, buffer: ArrayBuffer) => {
             const state = get();
             if (state.type === "loading") {
@@ -148,9 +151,13 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
     };
 };
 
+/** Where new code came from: typed into the file that is open, or loaded in place of it. */
+type CodeSource = "edit" | "example";
+
 const updateParseResultsFromPrevious = (
     result: ParseResults,
     state: AppFailedParseState | AppRunningState | AppFinishedState,
+    source: CodeSource,
 ) => {
     for (const binding of result.bindings) {
         const oldBinding =
@@ -179,13 +186,39 @@ const updateParseResultsFromPrevious = (
         }
     }
 
-    // Nothing selected is a choice, and an edit elsewhere in the file is no reason to undo it. The
-    // fallback is for a target the edit emptied out, and for a shader that had nothing to run in the
-    // first place, where picking up whatever the edit just added is the point. `result.target` is
-    // already what a fresh parse of the new code picked, run order and all.
-    const clearedByHand = state.target.type === "none" && state.runnables.length > 0;
+    // A run order comment that changed is the shader asking for a new sequence, so it replaces
+    // whatever was picked, empty included. One that does not resolve yet - usually because it is
+    // still being typed - asks for nothing, and the target is carried over as for any other edit.
+    // `result.target` is already that sequence, since a fresh parse runs a run order that resolves.
+    const declared = resolveRunOrder(result.runnables, result.runOrder);
+    if (declared.type === "passes" && !sameNames(result.runOrder, state.runOrder)) {
+        const previous = targetRunnables(state.target);
+        for (const pass of declared.passes) {
+            const old = previous.find((r) => r.type === "compute" && r.name === pass.name);
+            if (old?.type === "compute") carryOverCounts(pass, old);
+        }
+        return;
+    }
+
+    // Nothing selected is a choice, and an edit elsewhere in the file is no reason to undo it. An
+    // example is not an edit to the file, though, and opening one onto nothing would hide what it is
+    // for. The fallback is for a target the edit emptied out, and for a shader that had nothing to run
+    // in the first place, where picking up whatever the edit just added is the point.
+    const clearedByHand = source === "edit" && state.target.type === "none" && state.runnables.length > 0;
     if (clearedByHand) result.target = { type: "none" };
     else result.target = carryOverTarget(state.target, result.runnables) ?? result.target;
+};
+
+const sameNames = (a: string[] | null, b: string[] | null) =>
+    a === b || (a !== null && b !== null && a.length === b.length && a.every((name, idx) => name === b[idx]));
+
+/**
+ * Counts set by hand survive an edit, but only while the directive behind them is unchanged - the
+ * same rule the bindings above use for their inputs, so that editing a comment takes effect instead
+ * of being quietly discarded.
+ */
+const carryOverCounts = (current: RunnableComputeShader, previous: RunnableComputeShader) => {
+    if (current.directive === previous.directive) current.threads = previous.threads;
 };
 
 /**
@@ -204,10 +237,7 @@ const carryOverTarget = (previous: RunTarget, runnables: Runnable[]): RunTarget 
             const match = runnables.find((r) => r.type === "compute" && r.name === pass.name);
             if (match?.type !== "compute") return [];
 
-            // Counts set by hand survive an edit, but only while the directive behind them is
-            // unchanged - the same rule the bindings above use for their inputs, so that editing a
-            // comment takes effect instead of being quietly discarded.
-            if (match.directive === pass.directive) match.threads = pass.threads;
+            carryOverCounts(match, pass);
             return [match];
         });
 

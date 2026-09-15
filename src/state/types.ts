@@ -36,6 +36,8 @@ export interface AppActions {
     setDevice: (device: GPUDevice | null) => void;
     setCanvas: (canvas: HTMLCanvasElement | null) => void;
     setWGSL: (wgsl: string | undefined) => void;
+    /** Replaces the code with an example, which is a new file rather than an edit to the one open. */
+    loadExample: (wgsl: string) => void;
     setBindingInput: (id: string, input: string, buffer: ArrayBuffer) => void;
     setRunTarget: (target: RunTarget) => void;
     setRunnableInput: (name: string, input: string, buffer: ArrayBuffer) => void;

@@ -1,7 +1,7 @@
 /**
  * A shader whose passes are meant to run one after another says so, on a line of its own:
  *
- *     // playground-run-order: measure, draw
+ *     // playground-compute-run-order: measure, draw
  *
  * The other directives hang off a declaration and describe it. This one is about the file as a
  * whole, and there is nothing for it to hang off: the fact that one pass fills in what the next one
@@ -12,7 +12,7 @@
  * a pass before it goes through the bindings they share, which is what makes them a chain.
  */
 
-const RUN_ORDER = "playground-run-order:";
+const RUN_ORDER = "playground-compute-run-order:";
 
 /**
  * The entry point names a shader declares as its run order, or null if it declares none.

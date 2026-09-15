@@ -1,6 +1,6 @@
 import { SegmentedControl } from "@blueprintjs/core";
 import React from "react";
-import { singleTarget } from "../../../utilities/runTarget";
+import { defaultTargetOfKind } from "../../../utilities/runTarget";
 import { RunTarget, Runnable } from "../../../utilities/types";
 
 const KINDS: { value: Runnable["type"]; label: string }[] = [
@@ -17,13 +17,15 @@ const KINDS: { value: Runnable["type"]; label: string }[] = [
  * control having been built differently. Nothing is selected when the target is empty, since
  * clearing is a choice the segmented control has no way to express itself.
  *
- * Switching kind lands on the first runnable of it, and the picker below chooses among the rest.
+ * Switching kind lands on the first runnable of it - or, for compute, on the shader's run order if it
+ * declares one - and the picker below chooses among the rest.
  */
 export const RunnableKinds: React.FC<{
     options: Runnable[];
+    runOrder: string[] | null;
     target: RunTarget;
     setRunTarget: (target: RunTarget) => void;
-}> = ({ options, target, setRunTarget }) => (
+}> = ({ options, runOrder, target, setRunTarget }) => (
     <SegmentedControl
         // Blueprint fills the control in; `outlined` is the same background and border the button
         // this replaced used, so the section keeps the shape it had.
@@ -36,6 +38,13 @@ export const RunnableKinds: React.FC<{
             disabled: !options.some((runnable) => runnable.type === value),
         }))}
         value={target.type}
-        onValueChange={(kind) => setRunTarget(singleTarget(options.find((runnable) => runnable.type === kind)))}
+        onValueChange={(value) => {
+            // Blueprint reports a click on the kind already selected as a change too, and treating it
+            // as one would throw away the chain and any counts edited by hand for nothing.
+            const kind = KINDS.find((entry) => entry.value === value)?.value;
+            if (kind === undefined || kind === target.type) return;
+
+            setRunTarget(defaultTargetOfKind(options, kind, runOrder));
+        }}
     />
 );

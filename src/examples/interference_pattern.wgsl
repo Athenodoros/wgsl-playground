@@ -4,7 +4,7 @@
 /// second needs the number the first works out - so the order they run in is the whole point, and
 /// the line below is how the shader says so.
 
-/// playground-run-order: measure, draw
+/// playground-compute-run-order: measure, draw
 
 struct Source {
     position: vec2<f32>,

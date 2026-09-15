@@ -134,6 +134,34 @@ fn vertex_main() -> @builtin(position) vec4<f32> { }`}</code>
                                 comment a run starts at <code>1, 1, 1</code> work groups or <code>3</code> vertices.
                             </p>
                         </section>
+
+                        <section>
+                            <h3 className="font-semibold mb-2">Running compute passes in sequence</h3>
+                            <p className="mb-3">
+                                Several compute entry points can be picked in the Run Target panel. They run one after
+                                another in the order they were picked, over the same bindings, so a pass can read what
+                                the one before it wrote. Only the state left once the last pass has finished is shown.
+                            </p>
+                            <p className="mb-3">
+                                A shader can say which passes it runs, and in what order, with a comment on a line of
+                                its own:
+                            </p>
+                            <pre className="bg-slate-100 rounded p-3 overflow-x-auto text-xs">
+                                <code>{`// playground-compute-run-order: measure, draw
+
+@compute @workgroup_size(64, 1, 1)
+fn measure() { }
+
+@compute @workgroup_size(8, 8, 1)
+fn draw() { }`}</code>
+                            </pre>
+                            <p className="mt-3">
+                                This is what runs when the shader is opened, when the comment is edited, and when
+                                Compute is chosen again after running something else. Every name has to be a compute
+                                entry point in the shader: a run order naming one that is not is reported at the top of
+                                the Function Runner and ignored as a whole, rather than partly run.
+                            </p>
+                        </section>
                     </div>
                 </div>
             </Drawer>

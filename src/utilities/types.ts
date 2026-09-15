@@ -133,6 +133,13 @@ export type ActiveRunTarget = Exclude<RunTarget, { type: "none" }>;
 export interface ParseResults {
     /** What runs, out of the `runnables` below. */
     target: RunTarget;
+    /**
+     * The entry point names the shader's run order comment gives, as written, or null without one.
+     *
+     * Kept as written rather than as the passes it resolves to, so that an edit to the comment can be
+     * told from an edit anywhere else, and so a name that matches nothing can still be reported.
+     */
+    runOrder: string[] | null;
     runnables: Runnable[];
     bindings: WgslBinding[];
     structs: StructInfo[];

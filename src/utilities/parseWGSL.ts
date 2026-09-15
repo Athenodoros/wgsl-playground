@@ -71,13 +71,15 @@ export const parseWGSL = (
     if (error) return { type: "failed-parse", error };
 
     const runnables = getFunctionRunOptions(reflect.reflect, wgsl);
+    const runOrder = getRunOrder(wgsl);
 
     return {
         type: "running",
         structs: reflect.reflect.structs,
         bindings: bindings as WgslBinding[],
         runnables,
-        target: getDefaultTarget(runnables, getRunOrder(wgsl)),
+        runOrder,
+        target: getDefaultTarget(runnables, runOrder),
     };
 };
 

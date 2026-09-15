@@ -1,7 +1,7 @@
 import { Callout, NumericInput, NumericInputProps, SectionCard } from "@blueprintjs/core";
 import React, { useCallback } from "react";
 import { useAppState } from "../../../state";
-import { targetRunnables, updateRunnable } from "../../../utilities/runTarget";
+import { resolveRunOrder, targetRunnables, updateRunnable } from "../../../utilities/runTarget";
 import { Runnable, RunnableFunctionArgument } from "../../../utilities/types";
 import { useVariableDisplayProps } from "../../shared/useVariableDisplayProps";
 import { VariableDisplay } from "../../shared/VariableDisplay";
@@ -12,6 +12,7 @@ export const RunnableInputs: React.FC = () => {
     const target = useAppState((state) => state.target);
     const setRunTarget = useAppState((state) => state.setRunTarget);
     const options = useAppState((state) => state.runnables);
+    const runOrder = useAppState((state) => state.runOrder);
 
     const update = useCallback(
         (updated: Runnable) => setRunTarget(updateRunnable(target, updated)),
@@ -19,14 +20,21 @@ export const RunnableInputs: React.FC = () => {
     );
 
     const runnables = targetRunnables(target);
+    const declared = resolveRunOrder(options, runOrder);
 
     return (
         <SectionCard padded={true}>
             <div className="flex flex-col gap-4">
+                {declared.type === "invalid" ? <RunOrderWarning unknown={declared.unknown} /> : null}
                 <div className="flex flex-col gap-2">
                     <div className="flex justify-between items-center gap-4">
                         <p className="!mb-0 bg-slate-100 py-1 px-2 rounded-md shrink-0">Run Target</p>
-                        <RunnableKinds options={options} target={target} setRunTarget={setRunTarget} />
+                        <RunnableKinds
+                            options={options}
+                            runOrder={runOrder}
+                            target={target}
+                            setRunTarget={setRunTarget}
+                        />
                     </div>
                     <div className="flex justify-end min-w-0">
                         <div className="max-w-2/3 min-w-0">
@@ -46,6 +54,25 @@ export const RunnableInputs: React.FC = () => {
         </SectionCard>
     );
 };
+
+/**
+ * Says that the shader's run order comment was ignored, and which of its names is to blame.
+ *
+ * The target below still shows what actually runs, so this is only here to explain why that is not
+ * what the comment asked for.
+ */
+const RunOrderWarning: React.FC<{ unknown: string[] }> = ({ unknown }) => (
+    <Callout intent="warning" icon="warning-sign" compact={true}>
+        The run order comment is ignored, because{" "}
+        {unknown.map((name, idx) => (
+            <React.Fragment key={name}>
+                {idx > 0 ? ", " : null}
+                <code>{name}</code>
+            </React.Fragment>
+        ))}{" "}
+        {unknown.length === 1 ? "is not a compute entry point" : "are not compute entry points"} in this shader.
+    </Callout>
+);
 
 /**
  * The inputs belonging to one runnable in the target.

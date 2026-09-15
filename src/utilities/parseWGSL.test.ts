@@ -66,13 +66,13 @@ fn second() { }
 `;
 
     it("runs the chain a shader declares, in the order it declares it", () => {
-        const { target } = parse(`// playground-run-order: second, first\n${TWO_PASSES}`);
+        const { target } = parse(`// playground-compute-run-order: second, first\n${TWO_PASSES}`);
 
         expect(target.type === "compute" && target.passes.map((pass) => pass.name)).toEqual(["second", "first"]);
     });
 
     it("passes over a run order naming something that is not there, rather than running part of it", () => {
-        const { target } = parse(`// playground-run-order: second, typo\n${TWO_PASSES}`);
+        const { target } = parse(`// playground-compute-run-order: second, typo\n${TWO_PASSES}`);
 
         expect(target.type === "compute" && target.passes.map((pass) => pass.name)).toEqual(["first"]);
     });

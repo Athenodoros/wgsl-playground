@@ -1,4 +1,4 @@
-import { nonEmpty } from "./data";
+import { NonEmpty, nonEmpty } from "./data";
 import { RunTarget, Runnable, RunnableComputeShader } from "./types";
 
 /**
@@ -25,6 +25,47 @@ export const computeTarget = (passes: RunnableComputeShader[]): RunTarget => {
     return found === null ? { type: "none" } : { type: "compute", passes: found };
 };
 
+/** What a shader's run order comment comes to, against the entry points the shader actually has. */
+export type ResolvedRunOrder =
+    | { type: "undeclared" }
+    | { type: "passes"; passes: NonEmpty<RunnableComputeShader> }
+    | { type: "invalid"; unknown: string[] };
+
+/**
+ * The compute passes a run order names, in its order, or the names in it that match none.
+ *
+ * A run order is taken whole or not at all. Dropping a name that matches nothing would run something
+ * other than what the file says while looking exactly like it had worked, and a half-applied order is
+ * a worse answer than the shader's own first pass.
+ */
+export const resolveRunOrder = (runnables: Runnable[], runOrder: string[] | null): ResolvedRunOrder => {
+    if (runOrder === null) return { type: "undeclared" };
+
+    const computes = runnables.filter((runnable): runnable is RunnableComputeShader => runnable.type === "compute");
+    const unknown = runOrder.filter((name) => !computes.some((pass) => pass.name === name));
+    if (unknown.length > 0) return { type: "invalid", unknown };
+
+    const passes = nonEmpty(runOrder.flatMap((name) => computes.filter((pass) => pass.name === name)));
+    return passes === null ? { type: "undeclared" } : { type: "passes", passes };
+};
+
+/**
+ * What choosing a kind of runnable runs: the shader's run order for compute when it has one that
+ * resolves, and otherwise the first runnable of that kind.
+ */
+export const defaultTargetOfKind = (
+    runnables: Runnable[],
+    kind: Runnable["type"],
+    runOrder: string[] | null,
+): RunTarget => {
+    if (kind === "compute") {
+        const declared = resolveRunOrder(runnables, runOrder);
+        if (declared.type === "passes") return { type: "compute", passes: declared.passes };
+    }
+
+    return singleTarget(runnables.find((runnable) => runnable.type === kind));
+};
+
 /**
  * What a shader runs before anything has been picked.
  *
@@ -35,22 +76,13 @@ export const computeTarget = (passes: RunnableComputeShader[]): RunTarget => {
  * on the compute pass below that the file is for.
  */
 export const getDefaultTarget = (runnables: Runnable[], runOrder: string[] | null = null): RunTarget => {
-    const declared = (runOrder ?? []).flatMap((name) =>
-        runnables.filter(
-            (runnable): runnable is RunnableComputeShader => runnable.type === "compute" && runnable.name === name,
-        ),
-    );
+    if (resolveRunOrder(runnables, runOrder).type === "passes")
+        return defaultTargetOfKind(runnables, "compute", runOrder);
 
-    // A run order is taken whole or not at all. Dropping a name that matches nothing would run
-    // something other than what the file says while looking exactly like it had worked, and a
-    // half-applied order is a worse answer than the shader's own first pass.
-    if (runOrder !== null && declared.length === runOrder.length) return computeTarget(declared);
-
-    return singleTarget(
-        runnables.find((runnable) => runnable.type === "render") ??
-            runnables.find((runnable) => runnable.type === "compute") ??
-            runnables.find((runnable) => runnable.type === "function"),
+    const kind = (["render", "compute", "function"] as const).find((kind) =>
+        runnables.some((runnable) => runnable.type === kind),
     );
+    return kind === undefined ? { type: "none" } : defaultTargetOfKind(runnables, kind, runOrder);
 };
 
 /** The runnables a target names, in the order they run. */
