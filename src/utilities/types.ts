@@ -25,6 +25,11 @@ export interface WgslBufferBinding extends WgslBindingBase {
     kind: "buffer";
     input: string;
     buffer: ArrayBuffer;
+    /**
+     * Whether the playground writes the seconds since the last frame into this binding, rather than
+     * the user choosing what it holds. Only an f32 uniform marked `playground-time` is one.
+     */
+    time: boolean;
 }
 
 /**
@@ -143,4 +148,25 @@ export interface ParseResults {
     runnables: Runnable[];
     bindings: WgslBinding[];
     structs: StructInfo[];
+    /**
+     * Whether a compute or render target runs frame after frame rather than once.
+     *
+     * A parse turns it on exactly when the shader has a time uniform, since that is a shader written
+     * to be looped. After that it is the user's, and is only reset when that question changes answer.
+     */
+    loop: boolean;
 }
+
+/** Whether a looping target is advancing, and how far it has got since it last started over. */
+export interface PlaybackState {
+    playing: boolean;
+    clock: LoopClock;
+}
+
+export interface LoopClock {
+    frames: number;
+    /** Seconds, summed over the frames run, so time spent paused is not counted. */
+    elapsed: number;
+}
+
+export const STOPPED_CLOCK: LoopClock = { frames: 0, elapsed: 0 };

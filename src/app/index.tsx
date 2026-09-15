@@ -20,7 +20,9 @@ export const App = () => {
                     <div className="w-2xl flex flex-col gap-4 overflow-y-auto -m-px p-px">
                         <StructDisplay />
                         <BindingsDisplay />
-                        <RightSection title="Function Runner" icon="flow-end">
+                        {/* The output canvas lives in here, and a fresh one would have to start its run over -
+                            throwing away everything a loop has built up. */}
+                        <RightSection title="Function Runner" icon="flow-end" keepChildrenMounted>
                             <RunnableInputs />
                             <RunnableOutputs />
                         </RightSection>

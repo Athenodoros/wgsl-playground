@@ -1,13 +1,37 @@
 import { StoreApi } from "zustand";
 import { noop, range } from "../utilities/data";
-import { parseWGSL } from "../utilities/parseWGSL";
+import { hasTimeUniform, parseWGSL } from "../utilities/parseWGSL";
 import { computeTarget, resolveRunOrder, targetRunnables } from "../utilities/runTarget";
-import { runWGSLFunction } from "../utilities/runWGSLFunction";
-import { ParseResults, RunTarget, Runnable, RunnableComputeShader, RunnableFunction } from "../utilities/types";
+import { createRunSession, runWGSLFunction } from "../utilities/runWGSLFunction";
+import {
+    LoopClock,
+    ParseResults,
+    RunTarget,
+    Runnable,
+    RunnableComputeShader,
+    RunnableFunction,
+    RunnerResults,
+    STOPPED_CLOCK,
+} from "../utilities/types";
+import { Loop, startLoop } from "./loop";
 import { AppActions, AppFailedParseState, AppFinishedState, AppRunningState, AppState } from "./types";
 
 export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi<AppState>["getState"]): AppActions => {
-    let cancel: () => void = noop;
+    /** Ends whatever run is under way, so that nothing it finishes later is shown. */
+    let stop: () => void = noop;
+    /** The loop under way, when the run is one. */
+    let activeLoop: Loop | null = null;
+
+    /**
+     * Shows results on top of the state as it is now, rather than as it was when the run started, so
+     * that pausing or playing while a read is in flight is not undone by the read landing.
+     */
+    const show = (results: RunnerResults, clock?: LoopClock) => {
+        const current = get();
+        if (current.type === "loading" || current.type === "failed-parse") return;
+
+        set({ ...current, type: "finished", results, clock: clock ?? current.clock }, true);
+    };
 
     const applyWGSL = (wgsl: string, source: CodeSource) => {
         const state = get();
@@ -30,27 +54,44 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
 
         updateParseResultsFromPrevious(result, state, source);
 
-        startGPUProcessing({ ...state, ...result, wgsl });
+        // An example that opened paused would look like one that does not work.
+        startGPUProcessing({ ...state, ...result, wgsl, playing: source === "example" || state.playing });
     };
 
+    /**
+     * Starts the target over from the bindings' values, dropping whatever was running before.
+     *
+     * A loop is started over by anything that changes what it runs or what it starts from - an edit,
+     * a new value, a new target - since the state it has built up came from what was there before.
+     */
     const startGPUProcessing = (state: AppRunningState) => {
-        set(state, true);
+        stop();
+        stop = noop;
+        activeLoop = null;
+
+        set({ ...state, clock: STOPPED_CLOCK }, true);
         if (state.device === null) return;
 
-        cancel();
-
-        const { target } = state;
+        const { device, target } = state;
         if (target.type === "none") return;
 
-        let cancelled = false;
-        cancel = () => {
-            cancelled = true;
-        };
+        // A plain function has nothing to loop over: it is handed its arguments and hands back a value.
+        if (target.type === "function" || !state.loop) {
+            let cancelled = false;
+            stop = () => {
+                cancelled = true;
+            };
 
-        runWGSLFunction(state.device, state.wgsl, target, state.bindings, state.canvas).then((results) => {
-            if (cancelled) return;
-            set({ ...state, type: "finished", results }, true);
-        });
+            runWGSLFunction(device, state.wgsl, target, state.bindings, state.canvas).then((results) => {
+                if (!cancelled) show(results);
+            });
+            return;
+        }
+
+        const session = createRunSession(device, state.wgsl, target, state.bindings, state.canvas);
+        const loop = startLoop(session, state.playing, { show, halted: () => set({ playing: false }) });
+        activeLoop = loop;
+        stop = loop.stop;
     };
 
     return {
@@ -148,6 +189,30 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
                 },
             });
         },
+        setLoop: (loop) => {
+            const state = get();
+
+            // Turning the loop on is asking to watch it run, whatever it was last left at.
+            const playing = loop || state.playing;
+            if (state.type === "loading" || state.type === "failed-parse") set({ ...state, loop, playing });
+            else startGPUProcessing({ ...state, type: "running", loop, playing });
+        },
+        play: () => {
+            if (get().playing) return;
+
+            set({ playing: true });
+            activeLoop?.play();
+        },
+        pause: () => {
+            if (!get().playing) return;
+
+            set({ playing: false });
+            activeLoop?.pause();
+        },
+        reset: () => {
+            const state = get();
+            if (state.type === "running" || state.type === "finished") startGPUProcessing({ ...state, type: "running" });
+        },
     };
 };
 
@@ -175,16 +240,25 @@ const updateParseResultsFromPrevious = (
         // the values it produces either, since `rand` gives different ones every time.
         const newDefault = binding.type.getDefaultValue();
         const oldDefault = oldBinding.type.getDefaultValue();
+        // A binding the playground keeps the time in has nothing the user set to keep, and one that has
+        // just stopped being that should not start from the zero it held.
         if (
             newDefault.type === "values" &&
             oldDefault.type === "values" &&
             newDefault.value === oldDefault.value &&
-            binding.directive === oldBinding.directive
+            binding.directive === oldBinding.directive &&
+            binding.time === oldBinding.time
         ) {
             binding.input = oldBinding.input;
             binding.buffer = oldBinding.buffer;
         }
     }
+
+    // Whether to loop is the user's call, and an edit elsewhere is no reason to undo it. Adding or
+    // taking away the time uniform changes what the shader is for, though, so the default comes back
+    // then - as it does for an example, which is a new file rather than an edit to this one.
+    if (source === "edit" && hasTimeUniform(result.bindings) === hasTimeUniform(state.bindings))
+        result.loop = state.loop;
 
     // A run order comment that changed is the shader asking for a new sequence, so it replaces
     // whatever was picked, empty included. One that does not resolve yet - usually because it is

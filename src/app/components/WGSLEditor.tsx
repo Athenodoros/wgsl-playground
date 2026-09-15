@@ -1,13 +1,25 @@
-import { Button, Menu, MenuItem, PopoverNext, Section } from "@blueprintjs/core";
+import { Button, IconName, Menu, MenuItem, PopoverNext, Section } from "@blueprintjs/core";
 import { Editor } from "@monaco-editor/react";
 import { useState } from "react";
 import defaultComputeShader from "../../examples/default_compute_shader.wgsl";
 import defaultVertexShader from "../../examples/default_vertex_shader.wgsl";
 import interferencePattern from "../../examples/interference_pattern.wgsl";
+import travellingWaves from "../../examples/travelling_waves.wgsl";
 import { useAppState } from "../../state";
 import { INITIAL_APP_STATE } from "../../state/defaults";
 import { noop } from "../../utilities/data";
 import { ShareButton } from "./ShareButton";
+
+// vite-plugin-glsl mangles comments unless they have triple slashes, so the files use `///` throughout
+// and they are put back to `//` here.
+const unmangleComments = (wgsl: string) => wgsl.replace(/\/\/\//g, "//");
+
+const EXAMPLES: { icon: IconName; text: string; wgsl: string }[] = [
+    { icon: "media", text: "Triangle Vertex Shader", wgsl: unmangleComments(defaultVertexShader) },
+    { icon: "derive-column", text: "CumSum Compute Shader", wgsl: unmangleComments(defaultComputeShader) },
+    { icon: "heatmap", text: "Interference Pattern", wgsl: unmangleComments(interferencePattern) },
+    { icon: "play", text: "Travelling Waves", wgsl: unmangleComments(travellingWaves) },
+];
 
 export const WGSLEditor: React.FC = () => {
     const wgsl = useAppState((state) => state.wgsl);
@@ -33,24 +45,15 @@ export const WGSLEditor: React.FC = () => {
                             placement="bottom"
                             content={
                                 <Menu>
-                                    <MenuItem
-                                        icon="media"
-                                        text="Triangle Vertex Shader"
-                                        onClick={setExample(defaultVertexShader.replace(/\/\/\//g, "//"))} // vite-plugin-glsl mangles comments unless they have triple slashes...
-                                        disabled={wgsl === defaultVertexShader.replace(/\/\/\//g, "//")}
-                                    />
-                                    <MenuItem
-                                        icon="derive-column"
-                                        text="CumSum Compute Shader"
-                                        onClick={setExample(defaultComputeShader.replace(/\/\/\//g, "//"))}
-                                        disabled={wgsl === defaultComputeShader.replace(/\/\/\//g, "//")}
-                                    />
-                                    <MenuItem
-                                        icon="heatmap"
-                                        text="Interference Pattern"
-                                        onClick={setExample(interferencePattern.replace(/\/\/\//g, "//"))}
-                                        disabled={wgsl === interferencePattern.replace(/\/\/\//g, "//")}
-                                    />
+                                    {EXAMPLES.map((example) => (
+                                        <MenuItem
+                                            key={example.text}
+                                            icon={example.icon}
+                                            text={example.text}
+                                            onClick={setExample(example.wgsl)}
+                                            disabled={wgsl === example.wgsl}
+                                        />
+                                    ))}
                                 </Menu>
                             }
                         >

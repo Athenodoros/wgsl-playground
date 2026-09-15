@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { encodeComputePasses } from "./runWGSLFunction";
+import { createComputePipelines, encodeComputePasses } from "./runWGSLFunction";
 
 /**
  * A stand-in for the handful of things a compute pass asks of a GPUDevice, which writes down what it
@@ -42,19 +42,20 @@ describe("encodeComputePasses", () => {
         const { device, calls } = recordingDevice();
         const bindGroups = [[0, "bindGroup(0)" as unknown as GPUBindGroup]] as const;
 
-        encodeComputePasses(device, {} as GPUShaderModule, {} as GPUPipelineLayout, bindGroups, [
+        const pipelines = createComputePipelines(device, {} as GPUShaderModule, {} as GPUPipelineLayout, [
             { name: "measure", threads: [1, 1, 1] },
             { name: "draw", threads: [80, 45, 1] },
         ]);
+        encodeComputePasses(device, bindGroups, pipelines);
 
         expect(calls).toEqual([
             "createComputePipeline measure",
+            "createComputePipeline draw",
             "beginComputePass measure",
             "setPipeline pipeline(measure)",
             "setBindGroup 0 bindGroup(0)",
             "dispatch 1 1 1",
             "end",
-            "createComputePipeline draw",
             "beginComputePass draw",
             "setPipeline pipeline(draw)",
             "setBindGroup 0 bindGroup(0)",

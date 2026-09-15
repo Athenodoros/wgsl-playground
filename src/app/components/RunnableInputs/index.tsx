@@ -1,4 +1,13 @@
-import { Callout, NumericInput, NumericInputProps, SectionCard } from "@blueprintjs/core";
+import {
+    Button,
+    ButtonGroup,
+    Callout,
+    Checkbox,
+    NumericInput,
+    NumericInputProps,
+    SectionCard,
+    Tooltip,
+} from "@blueprintjs/core";
 import React, { useCallback } from "react";
 import { useAppState } from "../../../state";
 import { resolveRunOrder, targetRunnables, updateRunnable } from "../../../utilities/runTarget";
@@ -41,6 +50,7 @@ export const RunnableInputs: React.FC = () => {
                             <RunnableSelect options={options} target={target} setRunTarget={setRunTarget} />
                         </div>
                     </div>
+                    <LoopControls />
                 </div>
                 {runnables.map((runnable) => (
                     <RunnableFields
@@ -52,6 +62,73 @@ export const RunnableInputs: React.FC = () => {
                 ))}
             </div>
         </SectionCard>
+    );
+};
+
+/**
+ * Whether a compute or render target runs in a loop, and the controls for one that does.
+ *
+ * The checkbox is small and steps back while unticked, so a shader that was never written to loop is
+ * not asked about it any louder than it needs to be. A function has nothing to loop over, and gets
+ * neither.
+ */
+const LoopControls: React.FC = () => {
+    const loopable = useAppState((state) => state.target.type === "compute" || state.target.type === "render");
+    const loop = useAppState((state) => state.loop);
+    const playing = useAppState((state) => state.playing);
+    const clock = useAppState((state) => state.clock);
+    const setLoop = useAppState((state) => state.setLoop);
+    const play = useAppState((state) => state.play);
+    const pause = useAppState((state) => state.pause);
+    const reset = useAppState((state) => state.reset);
+
+    // An error stays with the run it came from, so playing on would only stop again at once.
+    const halted = useAppState(
+        (state) => !state.playing && state.type === "finished" && state.results.type === "errors",
+    );
+
+    if (!loopable) return null;
+
+    return (
+        // A fixed height, so that ticking the box and bringing in the buttons does not move what is below.
+        <div className="flex justify-between items-center gap-2 h-6">
+            {loop ? (
+                <div className="flex items-center gap-2">
+                    <ButtonGroup size="small" variant="outlined">
+                        <Tooltip
+                            content="Stopped on an error - reset to run again"
+                            position="bottom"
+                            disabled={!halted}
+                        >
+                            <Button
+                                icon={playing ? "pause" : "play"}
+                                intent="primary"
+                                onClick={playing ? pause : play}
+                                title={halted ? undefined : playing ? "Pause" : "Play"}
+                                aria-label={playing ? "Pause" : "Play"}
+                                disabled={halted}
+                                // A disabled button gets no pointer events, which would leave the tooltip
+                                // around it nothing to open on.
+                                className={halted ? "pointer-events-none" : undefined}
+                            />
+                        </Tooltip>
+                        <Button icon="reset" onClick={reset} title="Reset" aria-label="Reset" />
+                    </ButtonGroup>
+                    <p className="!mb-0 text-xs text-slate-400 tabular-nums">
+                        {clock.elapsed.toFixed(2)}s, frame {clock.frames}
+                    </p>
+                </div>
+            ) : (
+                <div />
+            )}
+            <Checkbox
+                className={`!mb-0 scale-80 origin-right transition-opacity hover:!opacity-100 ${loop ? "" : "opacity-50"}`}
+                label="Run in loop"
+                alignIndicator="end"
+                checked={loop}
+                onChange={(event) => setLoop(event.target.checked)}
+            />
+        </div>
     );
 };
 

@@ -1,6 +1,6 @@
 import { ResourceType, VariableInfo, WgslReflect } from "wgsl_reflect";
 import { OUTPUT_CANVAS_HEIGHT, OUTPUT_CANVAS_WIDTH } from "./canvas";
-import { getDirectiveSource, getRunCounts, getRunOrder } from "./directives";
+import { getDirectiveSource, getRunCounts, getRunOrder, hasTimeMarker, TIME_MARKER_WARNING } from "./directives";
 import { getDefaultTarget } from "./runTarget";
 import { getStorageTextureSupport } from "./storageTextures";
 import { ParseResults, Runnable, RunnableFunction, WgslBinding, WgslTextureBinding } from "./types";
@@ -43,6 +43,12 @@ export const parseWGSL = (
                 writable: binding.access === "write" || binding.access === "read_write",
             };
 
+            // A time marker on anything but the one type it can fill is reported and passed over, the
+            // same as a value directive that does not fit.
+            const marked = hasTimeMarker(binding.attributes, wgsl);
+            const time = marked && binding.resourceType === ResourceType.Uniform && binding.type.name === "f32";
+            const markerWarning = marked && !time ? TIME_MARKER_WARNING : null;
+
             if (binding.resourceType === ResourceType.StorageTexture) {
                 const texture = getTextureBinding(binding, wgsl);
                 if (texture.type === "error") {
@@ -50,8 +56,17 @@ export const parseWGSL = (
                     return null;
                 }
 
-                return { ...common, kind: "texture", ...texture.fields };
+                return {
+                    ...common,
+                    kind: "texture",
+                    ...texture.fields,
+                    warning: texture.fields.warning ?? markerWarning,
+                };
             }
+
+            // Nothing has run yet, so no time has passed: this is also what a run that is not looping
+            // sees, which keeps a shader that moves things by it standing still.
+            if (time) return { ...common, kind: "buffer", warning: null, input: "0.0", buffer: new ArrayBuffer(4), time };
 
             const input = type.getDefaultValueForAttributes(binding.attributes, wgsl);
             if (input.type === "error") {
@@ -65,7 +80,14 @@ export const parseWGSL = (
                 return null;
             }
 
-            return { ...common, kind: "buffer", warning: input.warning ?? null, input: input.value, buffer };
+            return {
+                ...common,
+                kind: "buffer",
+                warning: input.warning ?? markerWarning,
+                input: input.value,
+                buffer,
+                time,
+            };
         }),
     );
     if (error) return { type: "failed-parse", error };
@@ -80,8 +102,13 @@ export const parseWGSL = (
         runnables,
         runOrder,
         target: getDefaultTarget(runnables, runOrder),
+        loop: hasTimeUniform(bindings as WgslBinding[]),
     };
 };
+
+/** Whether the playground fills any of these bindings with the time since the last frame. */
+export const hasTimeUniform = (bindings: WgslBinding[]) =>
+    bindings.some((binding) => binding.kind === "buffer" && binding.time);
 
 const DEFAULT_THREADS: [number, number, number] = [1, 1, 1];
 const DEFAULT_VERTICES = 3;

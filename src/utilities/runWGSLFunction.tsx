@@ -20,6 +20,7 @@ import { WGSLType } from "./WGSLType";
 const STUB_FUNCTION_RUNNER_OUTPUT_BINDING_ID = "stub_function_runner_output";
 const STUB_FUNCTION_RUNNER_NAME = "_wgsl_playground_function_runner__";
 
+/** Runs a target once, and reads back everything it left behind. */
 export const runWGSLFunction = async (
     device: GPUDevice,
     wgsl: string,
@@ -27,6 +28,59 @@ export const runWGSLFunction = async (
     bindings: WgslBinding[],
     canvas: HTMLCanvasElement,
 ): Promise<RunnerResults> => {
+    if (target.type === "function") {
+        assertSupportedBindings(bindings);
+        return runSimpleFunction(device, wgsl, target.runnable, bindings);
+    }
+
+    const session = createRunSession(device, wgsl, target, bindings, canvas);
+    session.frame(0);
+    const results = await session.read(true);
+    session.destroy();
+
+    return results;
+};
+
+/** A target that can be run more than once, which is every kind but a plain function. */
+export type LoopableRunTarget = Exclude<ActiveRunTarget, { type: "function" }>;
+
+/**
+ * A compute or render target with its GPU resources built, ready to be run any number of times.
+ *
+ * Resources are built once rather than per run, which is what lets a loop carry state from one frame
+ * to the next: the buffers and textures a frame writes are the ones the next frame reads. Running
+ * once is a session that runs one frame and is thrown away.
+ */
+export interface RunSession {
+    /**
+     * Runs the target, with this many seconds in any time uniform, and resolves to any error raised
+     * once the GPU has finished the frame.
+     */
+    frame: (deltaTime: number) => Promise<GPUError | null>;
+    /**
+     * Reads back the state the last frame left behind, along with any error raised since the session
+     * was built. `withTexture` also reads the pixels behind the canvas' hover readout, which is by far
+     * the slowest part, and so is left off while a loop is running.
+     */
+    read: (withTexture: boolean) => Promise<RunnerResults>;
+    destroy: () => void;
+}
+
+export const createRunSession = (
+    device: GPUDevice,
+    wgsl: string,
+    target: LoopableRunTarget,
+    bindings: WgslBinding[],
+    canvas: HTMLCanvasElement,
+): RunSession => {
+    assertSupportedBindings(bindings);
+
+    return target.type === "render"
+        ? createRenderSession(device, wgsl, target.runnable, bindings, canvas)
+        : createComputeSession(device, wgsl, target.passes, bindings, canvas);
+};
+
+const assertSupportedBindings = (bindings: WgslBinding[]) => {
     if (
         bindings.some(
             (b) =>
@@ -36,17 +90,70 @@ export const runWGSLFunction = async (
         )
     )
         throw new Error("Unsupported resource type");
+};
 
-    device.pushErrorScope("validation");
+/**
+ * Validation errors, caught a piece of work at a time.
+ *
+ * Every scope is pushed and popped around synchronous work, and never held open across an await, so
+ * that runs overlapping in time - a loop's frames, or a new run started while the last one is still
+ * reading back - cannot pop each other's scopes. What is caught is also kept, so a read reports an
+ * error a frame raised even when nothing was waiting on that frame.
+ */
+const createErrorScopes = (device: GPUDevice) => {
+    let caught: Promise<GPUError | null> = Promise.resolve(null);
 
-    switch (target.type) {
-        case "render":
-            return runRenderShader(device, wgsl, target.runnable, bindings, canvas);
-        case "compute":
-            return runComputeShaders(device, wgsl, target.passes, bindings, canvas);
-        case "function":
-            return runSimpleFunction(device, wgsl, target.runnable, bindings);
-    }
+    const pop = () => {
+        const popped = device.popErrorScope();
+        const previous = caught;
+        caught = Promise.all([previous, popped]).then(([first, next]) => first ?? next);
+        return popped;
+    };
+
+    return {
+        run: <T,>(work: () => T): [T, Promise<GPUError | null>] => {
+            device.pushErrorScope("validation");
+            try {
+                const result = work();
+                return [result, pop()];
+            } catch (error) {
+                pop();
+                throw error;
+            }
+        },
+        caught: () => caught,
+    };
+};
+
+/**
+ * Waits for a frame's error, and for the GPU to finish everything submitted so far.
+ *
+ * An error scope settles once the work in it has been validated, which is well before a slow shader
+ * has actually run, so it is no sign by itself that the GPU is ready for another frame.
+ */
+const finished = (device: GPUDevice, error: Promise<GPUError | null>) =>
+    Promise.all([error, device.queue.onSubmittedWorkDone()]).then(([caught]) => caught);
+
+/** Writes the seconds since the last frame into every binding the playground keeps the time in. */
+const writeDeltaTime = (
+    device: GPUDevice,
+    bindings: WgslBinding[],
+    buffers: Record<string, GPUBuffer>,
+    deltaTime: number,
+) => {
+    for (const binding of bindings)
+        if (binding.kind === "buffer" && binding.time)
+            device.queue.writeBuffer(buffers[binding.id], 0, new Float32Array([deltaTime]));
+};
+
+const destroyResources = ({ buffers, textures }: Pick<BindingResources, "buffers" | "textures">) => {
+    for (const buffer of Object.values(buffers)) buffer.destroy();
+    for (const texture of Object.values(textures)) texture.destroy();
+};
+
+const NO_CONTEXT_RESULTS: RunnerResults = {
+    type: "errors",
+    errors: [formatRuntimeError(new Error("No WebGPU context found"))],
 };
 
 const runSimpleFunction = async (
@@ -58,90 +165,129 @@ const runSimpleFunction = async (
     const runner = getCodeRunnerForFunction(runnable, bindings, wgsl);
     if (runner.type === "error") return { type: "errors", errors: [formatRuntimeError(new Error(runner.error))] };
 
-    const module = device.createShaderModule({ code: runner.code });
-    const { buffers } = runComputeModule(device, module, runner.bindings, [
-        { name: STUB_FUNCTION_RUNNER_NAME, threads: [1, 1, 1] },
-    ]);
-    const buffer = buffers[STUB_FUNCTION_RUNNER_OUTPUT_BINDING_ID];
-    const value = await readBufferValue(device, buffer, runner.outputBindingType);
+    const scopes = createErrorScopes(device);
+    const [{ module, resources, value }] = scopes.run(() => {
+        const module = device.createShaderModule({ code: runner.code });
+        const resources = runComputeModule(device, module, runner.bindings, [
+            { name: STUB_FUNCTION_RUNNER_NAME, threads: [1, 1, 1] },
+        ]);
+        const buffer = resources.buffers[STUB_FUNCTION_RUNNER_OUTPUT_BINDING_ID];
+        return { module, resources, value: readBufferValue(device, buffer, runner.outputBindingType) };
+    });
 
-    return maybeReturnResults(wgsl, [], device, module, { name: runnable.name, type: runner.outputBindingType, value });
+    const returned = { name: runnable.name, type: runner.outputBindingType, value: await value };
+    destroyResources(resources);
+
+    return collectResults(wgsl, module, scopes.caught(), [], returned);
 };
 
-const runRenderShader = async (
+const createRenderSession = (
     device: GPUDevice,
     wgsl: string,
     runnable: RunnableRender,
     bindings: WgslBinding[],
     canvas: HTMLCanvasElement,
-): Promise<RunnerResults> => {
-    const { bindGroups, pipelineLayout, textures } = getBindingResources(bindings, device, GPUShaderStage.FRAGMENT);
-    const module = device.createShaderModule({ code: wgsl });
+): RunSession => {
+    const scopes = createErrorScopes(device);
 
-    const pipeline = device.createRenderPipeline({
-        layout: pipelineLayout,
-        depthStencil: runnable.useDepthTexture
-            ? {
+    const [{ module, resources, pipeline, depthTexture, context }] = scopes.run(() => {
+        // Uniforms are visible to the vertex stage too, so a time uniform can move vertices. Storage
+        // buffers are not: some devices allow none in a vertex shader, and would reject the pipeline.
+        const resources = getBindingResources(bindings, device, (binding) =>
+            binding.kind === "buffer" && binding.resourceType === ResourceType.Uniform
+                ? GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT
+                : GPUShaderStage.FRAGMENT,
+        );
+        const module = device.createShaderModule({ code: wgsl });
+
+        const pipeline = device.createRenderPipeline({
+            layout: resources.pipelineLayout,
+            depthStencil: runnable.useDepthTexture
+                ? {
+                      format: "depth32float",
+                      depthWriteEnabled: true,
+                      depthCompare: "less",
+                      stencilFront: { compare: "always", failOp: "keep", depthFailOp: "keep", passOp: "keep" },
+                  }
+                : undefined,
+            vertex: { module, entryPoint: runnable.vertex },
+            fragment: { module, entryPoint: runnable.fragment, targets: [{ format: "rgba8unorm" }] },
+            primitive: { topology: "triangle-list" },
+        });
+
+        const depthTexture = runnable.useDepthTexture
+            ? device.createTexture({
+                  size: { width: canvas.width, height: canvas.height },
                   format: "depth32float",
-                  depthWriteEnabled: true,
-                  depthCompare: "less",
-                  stencilFront: { compare: "always", failOp: "keep", depthFailOp: "keep", passOp: "keep" },
-              }
-            : undefined,
-        vertex: { module, entryPoint: runnable.vertex },
-        fragment: { module, entryPoint: runnable.fragment, targets: [{ format: "rgba8unorm" }] },
-        primitive: { topology: "triangle-list" },
+                  usage: GPUTextureUsage.RENDER_ATTACHMENT,
+              })
+            : undefined;
+
+        const context = canvas.getContext("webgpu");
+        context?.configure({
+            device,
+            format: "rgba8unorm",
+            alphaMode: "opaque",
+            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+        });
+
+        return { module, resources, pipeline, depthTexture, context };
     });
 
-    const maybeDepthTexture = runnable.useDepthTexture
-        ? device.createTexture({
-              size: {
-                  width: canvas.width,
-                  height: canvas.height,
-              },
-              format: "depth32float",
-              usage: GPUTextureUsage.RENDER_ATTACHMENT,
-          })
-        : undefined;
+    /** Draws a frame onto the canvas, and returns the texture it was drawn into. */
+    const draw = (deltaTime: number, context: GPUCanvasContext) => {
+        writeDeltaTime(device, bindings, resources.buffers, deltaTime);
 
-    const context = canvas.getContext("webgpu");
-    if (context === null) return { type: "errors", errors: [formatRuntimeError(new Error("No WebGPU context found"))] };
-    context.configure({
-        device,
-        format: "rgba8unorm",
-        alphaMode: "opaque",
-        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
-    });
+        const commandEncoder = device.createCommandEncoder();
+        const texture = context.getCurrentTexture();
+        const renderpass = commandEncoder.beginRenderPass({
+            colorAttachments: [{ view: texture.createView(), loadOp: "clear", storeOp: "store" }],
+            depthStencilAttachment: depthTexture && {
+                view: depthTexture.createView(),
+                depthClearValue: 1.0,
+                depthLoadOp: "clear",
+                depthStoreOp: "discard",
+            },
+        });
+        renderpass.setPipeline(pipeline);
+        for (const [groupId, bindGroup] of resources.bindGroups) {
+            renderpass.setBindGroup(groupId, bindGroup);
+        }
+        renderpass.draw(runnable.vertices, 1, 0, 0);
+        renderpass.end();
+        device.queue.submit([commandEncoder.finish()]);
 
-    const commandEncoder = device.createCommandEncoder();
-    const texture = context.getCurrentTexture();
-    const renderpass: GPURenderPassEncoder = commandEncoder.beginRenderPass({
-        colorAttachments: [{ view: texture.createView(), loadOp: "clear", storeOp: "store" }],
-        depthStencilAttachment: maybeDepthTexture && {
-            view: maybeDepthTexture.createView(),
-            depthClearValue: 1.0,
-            depthLoadOp: "clear",
-            depthStoreOp: "discard",
+        return texture;
+    };
+
+    let lastDeltaTime = 0;
+
+    return {
+        frame: (deltaTime) => {
+            lastDeltaTime = deltaTime;
+            if (context === null) return Promise.resolve(null);
+
+            return finished(device, scopes.run(() => draw(deltaTime, context))[1]);
         },
-    });
-    renderpass.setPipeline(pipeline);
-    for (const [groupId, bindGroup] of bindGroups) {
-        renderpass.setBindGroup(groupId, bindGroup);
-    }
-    renderpass.draw(runnable.vertices, 1, 0, 0);
-    renderpass.end();
-    device.queue.submit([commandEncoder.finish()]);
+        read: async (withTexture) => {
+            if (context === null) return NO_CONTEXT_RESULTS;
 
-    const getTextureValue = await readTextureValues(device, texture, canvas);
+            // A canvas texture only lasts until it is presented, and a read that waited on anything
+            // has missed it. A render pass keeps no state of its own, so drawing the last frame again,
+            // with the time it was drawn with, gives back exactly the pixels it drew.
+            let texture: Promise<RunnerResultsTextureReader> | undefined;
+            if (withTexture)
+                scopes.run(() => {
+                    texture = readTextureValues(device, draw(lastDeltaTime, context), canvas);
+                });
 
-    if (maybeDepthTexture) maybeDepthTexture.destroy();
-    for (const bound of Object.values(textures)) bound.destroy();
-
-    // console.log("Waiting for 100ms: ", canvas.id);
-    // await new Promise((resolve) => setTimeout(resolve, 100));
-    // console.log("Finished calculating", canvas.id);
-
-    return maybeReturnResults(wgsl, [], device, module, null, getTextureValue);
+            return collectResults(wgsl, module, scopes.caught(), [], null, await texture);
+        },
+        destroy: () => {
+            depthTexture?.destroy();
+            destroyResources(resources);
+        },
+    };
 };
 
 /**
@@ -151,45 +297,70 @@ const runRenderShader = async (
  * one pass read what the pass before it wrote. Only the state left at the end is read back: the
  * passes in between are working steps, and reading each one would cost more than the run itself.
  */
-const runComputeShaders = async (
+const createComputeSession = (
     device: GPUDevice,
     wgsl: string,
     passes: NonEmpty<RunnableComputeShader>,
     bindings: WgslBinding[],
     canvas: HTMLCanvasElement,
-): Promise<RunnerResults> => {
-    const module = device.createShaderModule({ code: wgsl });
-    const { buffers, textures } = runComputeModule(device, module, bindings, passes);
-
-    // A storage texture has no CPU-side value to stringify, and stringifying one would be the slowest
-    // thing the playground does, so it goes to the canvas instead of into the outputs panel.
-    const promises = bindings
-        .filter((binding): binding is WgslBufferBinding => binding.kind === "buffer" && binding.writable)
-        .map((binding) =>
-            readBufferValue(device, buffers[binding.id], binding.type).then((value) => ({ binding, value })),
-        );
+): RunSession => {
+    const scopes = createErrorScopes(device);
 
     // There is one canvas, so the first storage texture is the one drawn on it. Nothing in the
     // playground says which of several to show yet, and no example has more than one.
     const displayed = bindings.find((binding): binding is WgslTextureBinding => binding.kind === "texture");
 
-    let getTextureValue: RunnerResultsTextureReader | undefined;
-    if (displayed) {
-        const context = canvas.getContext("webgpu");
-        if (context === null)
-            return { type: "errors", errors: [formatRuntimeError(new Error("No WebGPU context found"))] };
+    const [{ module, resources, pipelines, blit, context }] = scopes.run(() => {
+        const module = device.createShaderModule({ code: wgsl });
+        const resources = getBindingResources(bindings, device, () => GPUShaderStage.COMPUTE);
+        const pipelines = createComputePipelines(device, module, resources.pipelineLayout, passes);
 
-        const texture = textures[displayed.id];
-        blitTextureToCanvas(device, context, texture, displayed.format);
+        const context = displayed ? canvas.getContext("webgpu") : null;
+        const blit =
+            displayed && context
+                ? createCanvasBlit(device, context, resources.textures[displayed.id], displayed.format)
+                : null;
 
-        if (STORAGE_TEXTURE_FORMATS[displayed.format].inspectable)
-            getTextureValue = await readTextureValues(device, texture, canvas);
-    }
+        return { module, resources, pipelines, blit, context };
+    });
 
-    const results = await Promise.all(promises);
-    for (const bound of Object.values(textures)) bound.destroy();
+    return {
+        frame: (deltaTime) =>
+            finished(
+                device,
+                scopes.run(() => {
+                    writeDeltaTime(device, bindings, resources.buffers, deltaTime);
+                    encodeComputePasses(device, resources.bindGroups, pipelines);
+                    blit?.();
+                })[1],
+            ),
+        read: async (withTexture) => {
+            if (displayed && context === null) return NO_CONTEXT_RESULTS;
 
-    return maybeReturnResults(wgsl, results, device, module, null, getTextureValue);
+            const [{ values, texture }] = scopes.run(() => ({
+                // A storage texture has no CPU-side value to stringify, and stringifying one would be
+                // the slowest thing the playground does, so it goes to the canvas instead of into the
+                // outputs panel.
+                values: Promise.all(
+                    bindings
+                        .filter((binding): binding is WgslBufferBinding => binding.kind === "buffer" && binding.writable)
+                        .map((binding) =>
+                            readBufferValue(device, resources.buffers[binding.id], binding.type).then((value) => ({
+                                binding,
+                                value,
+                            })),
+                        ),
+                ),
+                texture:
+                    withTexture && displayed && STORAGE_TEXTURE_FORMATS[displayed.format].inspectable
+                        ? readTextureValues(device, resources.textures[displayed.id], canvas)
+                        : undefined,
+            }));
+
+            return collectResults(wgsl, module, scopes.caught(), await values, null, await texture);
+        },
+        destroy: () => destroyResources(resources),
+    };
 };
 
 type RunnerResultsTextureReader = NonNullable<Extract<RunnerResults, { type: "outputs" }>["getTextureValue"]>;
@@ -222,14 +393,14 @@ fn blit_fragment(input: BlitVertexOutput) -> @location(0) vec4<f32> {
 `;
 
 /**
- * Draws a storage texture onto the output canvas.
+ * Sets up drawing a storage texture onto the output canvas, and returns the function that draws it.
  *
  * A straight texture-to-texture copy will not do, because the canvas' backing store is scaled by
  * `devicePixelRatio` while a storage texture has a size of its own, so the two rarely match. This
  * fetches texels rather than sampling them, which keeps what lands on the canvas exactly what the
  * shader wrote, and needs no sampler - so the formats that cannot be filtered need no special case.
  */
-const blitTextureToCanvas = (
+const createCanvasBlit = (
     device: GPUDevice,
     context: GPUCanvasContext,
     texture: GPUTexture,
@@ -259,19 +430,22 @@ const blitTextureToCanvas = (
         fragment: { module, entryPoint: "blit_fragment", targets: [{ format: "rgba8unorm" }] },
         primitive: { topology: "triangle-list" },
     });
-
-    const commandEncoder = device.createCommandEncoder();
-    const renderpass = commandEncoder.beginRenderPass({
-        colorAttachments: [{ view: context.getCurrentTexture().createView(), loadOp: "clear", storeOp: "store" }],
+    const bindGroup = device.createBindGroup({
+        layout: bindGroupLayout,
+        entries: [{ binding: 0, resource: texture.createView() }],
     });
-    renderpass.setPipeline(pipeline);
-    renderpass.setBindGroup(
-        0,
-        device.createBindGroup({ layout: bindGroupLayout, entries: [{ binding: 0, resource: texture.createView() }] }),
-    );
-    renderpass.draw(3, 1, 0, 0);
-    renderpass.end();
-    device.queue.submit([commandEncoder.finish()]);
+
+    return () => {
+        const commandEncoder = device.createCommandEncoder();
+        const renderpass = commandEncoder.beginRenderPass({
+            colorAttachments: [{ view: context.getCurrentTexture().createView(), loadOp: "clear", storeOp: "store" }],
+        });
+        renderpass.setPipeline(pipeline);
+        renderpass.setBindGroup(0, bindGroup);
+        renderpass.draw(3, 1, 0, 0);
+        renderpass.end();
+        device.queue.submit([commandEncoder.finish()]);
+    };
 };
 
 /**
@@ -323,7 +497,13 @@ const readTextureValues = async (
     return (row, column) => values[Math.floor(row * rowScale)]?.[Math.floor(column * columnScale)] ?? null;
 };
 
-const getBindingResources = (bindings: WgslBinding[], device: GPUDevice, visibility: number) => {
+type BindingResources = ReturnType<typeof getBindingResources>;
+
+const getBindingResources = (
+    bindings: WgslBinding[],
+    device: GPUDevice,
+    getVisibility: (binding: WgslBinding) => GPUShaderStageFlags,
+) => {
     const groupIds = uniq(bindings.map(({ group }) => group));
 
     const bindGroupLayouts = groupIds.map((groupId) =>
@@ -331,6 +511,8 @@ const getBindingResources = (bindings: WgslBinding[], device: GPUDevice, visibil
             entries: bindings
                 .filter(({ group }) => group === groupId)
                 .map((binding): GPUBindGroupLayoutEntry => {
+                    const visibility = getVisibility(binding);
+
                     if (binding.kind === "texture")
                         return {
                             binding: binding.index,
@@ -393,15 +575,15 @@ const getBindingResources = (bindings: WgslBinding[], device: GPUDevice, visibil
     return { buffers, textures, bindGroups, pipelineLayout };
 };
 
-const maybeReturnResults = async (
+const collectResults = async (
     wgsl: string,
-    results: BindingOutput[],
-    device: GPUDevice,
     module: GPUShaderModule,
+    caught: Promise<GPUError | null>,
+    results: BindingOutput[],
     returned: FunctionOutput | null,
     getTextureValue?: (row: number, column: number) => [number, number, number, number] | null,
 ): Promise<RunnerResults> => {
-    const error = await device.popErrorScope();
+    const error = await caught;
     const compilation = await module.getCompilationInfo();
 
     if (compilation.messages.length > 0) return { type: "errors", errors: formatCompilationErrors(compilation, wgsl) };
@@ -432,12 +614,14 @@ const formatCompilationErrors = ({ messages }: GPUCompilationInfo, wgsl: string)
         icon: "warning-sign",
     }));
 
-const formatRuntimeError = (error: GPUError): RunnerResultError => ({
-    title: "Runtime Error",
-    text: error.message,
-    intent: "danger",
-    icon: "warning-sign",
-});
+function formatRuntimeError(error: GPUError): RunnerResultError {
+    return {
+        title: "Runtime Error",
+        text: error.message,
+        intent: "danger",
+        icon: "warning-sign",
+    };
+}
 
 const getCodeRunnerForFunction = (
     runnable: RunnableFunction,
@@ -535,6 +719,7 @@ fn ${STUB_FUNCTION_RUNNER_NAME}() {
             warning: null,
             input: inputBindingValue.value,
             buffer: inputBindingBuffer,
+            time: false,
         },
         {
             id: STUB_FUNCTION_RUNNER_OUTPUT_BINDING_ID,
@@ -550,6 +735,7 @@ fn ${STUB_FUNCTION_RUNNER_NAME}() {
             warning: null,
             input: outputBindingValue.value,
             buffer: outputBindingBuffer,
+            time: false,
         },
     ];
 
@@ -562,6 +748,11 @@ export interface ComputePass {
     threads: [number, number, number];
 }
 
+/** A compute pass with its pipeline built, so it can be dispatched any number of times. */
+export interface ComputePipeline extends ComputePass {
+    pipeline: GPUComputePipeline;
+}
+
 /** Builds the resources the passes share, then encodes and submits them. */
 const runComputeModule = (
     device: GPUDevice,
@@ -572,13 +763,30 @@ const runComputeModule = (
     const { buffers, textures, bindGroups, pipelineLayout } = getBindingResources(
         bindings,
         device,
-        GPUShaderStage.COMPUTE,
+        () => GPUShaderStage.COMPUTE,
     );
 
-    encodeComputePasses(device, module, pipelineLayout, bindGroups, passes);
+    encodeComputePasses(device, bindGroups, createComputePipelines(device, module, pipelineLayout, passes));
 
     return { buffers, textures };
 };
+
+/** Builds a pipeline per entry point, all of them over the same layout. */
+export const createComputePipelines = (
+    device: GPUDevice,
+    module: GPUShaderModule,
+    pipelineLayout: GPUPipelineLayout,
+    passes: NonEmpty<ComputePass>,
+): NonEmpty<ComputePipeline> =>
+    passes.map(({ name, threads }) => ({
+        name,
+        threads,
+        pipeline: device.createComputePipeline({
+            label: `Runner for ${name}`,
+            layout: pipelineLayout,
+            compute: { module, entryPoint: name },
+        }),
+    })) as NonEmpty<ComputePipeline>;
 
 /**
  * Encodes a pass per entry point into one submit, all of them sharing the bind groups they are given.
@@ -590,20 +798,12 @@ const runComputeModule = (
  */
 export const encodeComputePasses = (
     device: GPUDevice,
-    module: GPUShaderModule,
-    pipelineLayout: GPUPipelineLayout,
     bindGroups: readonly (readonly [number, GPUBindGroup])[],
-    passes: NonEmpty<ComputePass>,
+    pipelines: NonEmpty<ComputePipeline>,
 ) => {
     const commandEncoder = device.createCommandEncoder();
 
-    for (const { name, threads } of passes) {
-        const pipeline = device.createComputePipeline({
-            label: `Runner for ${name}`,
-            layout: pipelineLayout,
-            compute: { module, entryPoint: name },
-        });
-
+    for (const { name, threads, pipeline } of pipelines) {
         const computePass = commandEncoder.beginComputePass({ label: name });
         computePass.setPipeline(pipeline);
         for (const [groupId, bindGroup] of bindGroups) {
@@ -616,6 +816,12 @@ export const encodeComputePasses = (
     device.queue.submit([commandEncoder.finish()]);
 };
 
+/**
+ * Copies a buffer back to the CPU and reads it as its type.
+ *
+ * The copy is encoded and submitted before this first waits on anything, so it captures the buffer as
+ * it stands when this is called - which is what lets a loop read one frame while the next is queued.
+ */
 const readBufferValue = async (device: GPUDevice, buffer: GPUBuffer, type: WGSLType): Promise<string> => {
     const commandEncoder = device.createCommandEncoder();
     const destination = device.createBuffer({
@@ -626,5 +832,10 @@ const readBufferValue = async (device: GPUDevice, buffer: GPUBuffer, type: WGSLT
     device.queue.submit([commandEncoder.finish()]);
 
     await destination.mapAsync(GPUMapMode.READ);
-    return type.getStringFromBuffer(destination.getMappedRange());
+    const value = type.getStringFromBuffer(destination.getMappedRange());
+
+    destination.unmap();
+    destination.destroy();
+
+    return value;
 };
