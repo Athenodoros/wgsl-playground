@@ -162,6 +162,29 @@ fn draw() { }`}</code>
                                 the Function Runner and ignored as a whole, rather than partly run.
                             </p>
                         </section>
+
+                        <section>
+                            <h3 className="font-semibold mb-2">Running in a loop</h3>
+                            <p className="mb-3">
+                                Tick <strong>Run in loop</strong> under the Run Target to run a compute or render
+                                target once per frame, with controls to play, pause and reset it. Buffers and textures
+                                last from one frame to the next, so each frame reads what the one before it wrote.
+                                Reset throws that away and starts again from the binding values.
+                            </p>
+                            <p className="mb-3">
+                                Mark an <code>f32</code> uniform with this comment to have the playground fill it with
+                                the seconds since the last frame:
+                            </p>
+                            <pre className="bg-slate-100 rounded p-3 overflow-x-auto text-xs">
+                                <code>{`@group(0) @binding(0) var<uniform> delta_time: f32; // playground-time`}</code>
+                            </pre>
+                            <p className="mt-3">
+                                A shader with one of these starts out looping. It is zero whenever the target is run
+                                once, and on the first frame after playing or resetting. While the loop plays, outputs
+                                update a few times a second, and the colour under the pointer is shown once it is
+                                paused.
+                            </p>
+                        </section>
                     </div>
                 </div>
             </Drawer>

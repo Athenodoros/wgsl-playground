@@ -1,13 +1,13 @@
-import { ParseResults, RunTarget, RunnerResults } from "../utilities/types";
+import { ParseResults, PlaybackState, RunTarget, RunnerResults } from "../utilities/types";
 
-interface AppLoadingState extends ParseResults {
+interface AppLoadingState extends ParseResults, PlaybackState {
     type: "loading";
     device?: GPUDevice | null;
     canvas?: HTMLCanvasElement;
     wgsl: string;
 }
 
-export interface AppFailedParseState extends ParseResults {
+export interface AppFailedParseState extends ParseResults, PlaybackState {
     type: "failed-parse";
     device: GPUDevice | null;
     canvas: HTMLCanvasElement;
@@ -15,14 +15,14 @@ export interface AppFailedParseState extends ParseResults {
     error: string;
 }
 
-export interface AppRunningState extends ParseResults {
+export interface AppRunningState extends ParseResults, PlaybackState {
     type: "running";
     device: GPUDevice | null;
     canvas: HTMLCanvasElement;
     wgsl: string;
 }
 
-export interface AppFinishedState extends ParseResults {
+export interface AppFinishedState extends ParseResults, PlaybackState {
     type: "finished";
     device: GPUDevice | null;
     canvas: HTMLCanvasElement;
@@ -41,4 +41,9 @@ export interface AppActions {
     setBindingInput: (id: string, input: string, buffer: ArrayBuffer) => void;
     setRunTarget: (target: RunTarget) => void;
     setRunnableInput: (name: string, input: string, buffer: ArrayBuffer) => void;
+    setLoop: (loop: boolean) => void;
+    play: () => void;
+    pause: () => void;
+    /** Throws away everything a loop has written, and starts it again from the bindings' values. */
+    reset: () => void;
 }

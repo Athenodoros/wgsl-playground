@@ -6,9 +6,18 @@ interface RightSectionProps {
     icon: IconName;
     startClosed?: boolean;
     disabled?: boolean;
+    /** Keeps the contents mounted while collapsed, for anything that would lose its state on unmount. */
+    keepChildrenMounted?: boolean;
     children?: ReactNode | undefined;
 }
-export const RightSection: React.FC<RightSectionProps> = ({ title, icon, disabled, children, startClosed }) => {
+export const RightSection: React.FC<RightSectionProps> = ({
+    title,
+    icon,
+    disabled,
+    children,
+    startClosed,
+    keepChildrenMounted,
+}) => {
     const [isOpen, setIsOpen] = useState(!startClosed);
 
     return (
@@ -19,7 +28,7 @@ export const RightSection: React.FC<RightSectionProps> = ({ title, icon, disable
             // little scrollbar, which is a worse way to read a panel than scrolling the side.
             className={"shrink-0 min-h-[50px] flex flex-col"}
             collapsible={!disabled}
-            collapseProps={{ isOpen, onToggle: () => setIsOpen(!isOpen) }}
+            collapseProps={{ isOpen, onToggle: () => setIsOpen(!isOpen), keepChildrenMounted }}
             icon={icon}
         >
             {disabled ? null : children}

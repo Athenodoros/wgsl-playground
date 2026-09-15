@@ -2,7 +2,7 @@ import { StoreApi } from "zustand";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { parseWGSL } from "../utilities/parseWGSL";
 import { getAppActions } from "./actions";
-import { RunnerResults } from "../utilities/types";
+import { RunnerResults, STOPPED_CLOCK } from "../utilities/types";
 import { AppState } from "./types";
 
 // parseWGSL hangs the reflection off `window` for poking at in the console, and these tests run in
@@ -33,7 +33,14 @@ const storeShowing = (wgsl: string, results?: RunnerResults) => {
     const parsed = parseWGSL(wgsl);
     if (parsed.type === "failed-parse") throw new Error(parsed.error);
 
-    const common = { ...parsed, device: null, canvas: {} as HTMLCanvasElement, wgsl };
+    const common = {
+        ...parsed,
+        device: null,
+        canvas: {} as HTMLCanvasElement,
+        wgsl,
+        playing: true,
+        clock: STOPPED_CLOCK,
+    };
     let state: AppState = results ? { ...common, type: "finished", results } : { ...common, type: "running" };
 
     const set = ((update: Partial<AppState>, replace?: boolean) => {
@@ -86,6 +93,77 @@ describe("setWGSL", () => {
         store.actions.setWGSL(RENDER_SHADER);
 
         expect(store.getState().target.type).toBe("render");
+    });
+});
+
+describe("looping", () => {
+    const STEPPED_SHADER = `
+@group(0) @binding(0) var<storage, read_write> position: f32;
+
+@compute @workgroup_size(1, 1, 1)
+fn step() { position += 1.0; }
+`;
+    const TIME_UNIFORM = "@group(0) @binding(1) var<uniform> delta_time: f32; // playground-time\n";
+    const TIMED_SHADER = TIME_UNIFORM + STEPPED_SHADER.replace("1.0", "delta_time");
+
+    it("keeps the loop turned off by hand across an edit elsewhere", () => {
+        const store = storeShowing(TIMED_SHADER);
+        expect(store.getState().loop).toBe(true);
+
+        store.actions.setLoop(false);
+        store.actions.setWGSL(TIMED_SHADER + "\n// an edit elsewhere\n");
+
+        expect(store.getState().loop).toBe(false);
+    });
+
+    it("keeps the loop turned on by hand across an edit elsewhere", () => {
+        const store = storeShowing(STEPPED_SHADER);
+        expect(store.getState().loop).toBe(false);
+
+        store.actions.setLoop(true);
+        store.actions.setWGSL(STEPPED_SHADER + "\n// an edit elsewhere\n");
+
+        expect(store.getState().loop).toBe(true);
+    });
+
+    it("goes back to looping when an edit adds a time uniform, and stops when one takes it away", () => {
+        const store = storeShowing(STEPPED_SHADER);
+
+        store.actions.setWGSL(TIMED_SHADER);
+        expect(store.getState().loop).toBe(true);
+
+        store.actions.setWGSL(STEPPED_SHADER);
+        expect(store.getState().loop).toBe(false);
+    });
+
+    it("opens an example on its own default, playing", () => {
+        const store = storeShowing(STEPPED_SHADER);
+        store.actions.setLoop(true);
+        store.actions.pause();
+
+        store.actions.loadExample(STEPPED_SHADER + "\n// another example\n");
+
+        expect(store.getState().loop).toBe(false);
+        expect(store.getState().playing).toBe(true);
+    });
+
+    it("starts playing when the loop is turned on", () => {
+        const store = storeShowing(STEPPED_SHADER);
+        store.actions.pause();
+
+        store.actions.setLoop(true);
+
+        expect(store.getState().playing).toBe(true);
+    });
+
+    it("keeps the time binding out of what an edit carries over", () => {
+        const store = storeShowing(STEPPED_SHADER.replace("storage, read_write> position", "uniform> delta_time"));
+        const edited = TIME_UNIFORM.replace("binding(1)", "binding(0)") + "@compute @workgroup_size(1) fn step() { }";
+
+        store.actions.setWGSL(edited);
+
+        const time = store.getState().bindings[0];
+        expect(time.kind === "buffer" && [time.time, time.input]).toEqual([true, "0.0"]);
     });
 });
 

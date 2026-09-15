@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import interferencePattern from "../examples/interference_pattern.wgsl";
+import travellingWaves from "../examples/travelling_waves.wgsl";
 import { OUTPUT_CANVAS_HEIGHT, OUTPUT_CANVAS_WIDTH } from "./canvas";
 import { parseWGSL } from "./parseWGSL";
 import { WgslBinding } from "./types";
@@ -133,6 +134,82 @@ describe("the interference pattern example", () => {
             expect(amplitude).toBeGreaterThanOrEqual(0.5);
             expect(amplitude).toBeLessThanOrEqual(1.5);
         }
+    });
+});
+
+describe("the time uniform", () => {
+    const shaderWith = (declaration: string) => `
+${declaration}
+
+@compute @workgroup_size(1, 1, 1)
+fn step() { }
+`;
+
+    const binding = (bindings: WgslBinding[]) => {
+        const found = bindings[0];
+        if (found?.kind !== "buffer") throw new Error("expected a buffer binding");
+        return found;
+    };
+
+    it("is an f32 uniform marked with the comment, starting at zero, and makes the shader loop", () => {
+        const parsed = parse(shaderWith("@group(0) @binding(0) var<uniform> delta_time: f32; // playground-time"));
+        const time = binding(parsed.bindings);
+
+        expect(time.time).toBe(true);
+        expect(time.input).toBe("0.0");
+        expect(new Float32Array(time.buffer)).toEqual(new Float32Array([0]));
+        expect(time.warning).toBeNull();
+        expect(parsed.loop).toBe(true);
+    });
+
+    it("leaves a shader without one to run once", () => {
+        const parsed = parse(shaderWith("@group(0) @binding(0) var<uniform> scale: f32; // 2"));
+
+        expect(binding(parsed.bindings).time).toBe(false);
+        expect(parsed.loop).toBe(false);
+    });
+
+    it.each([
+        ["a storage buffer", "@group(0) @binding(0) var<storage, read_write> delta_time: f32; // playground-time"],
+        ["a uniform of another type", "@group(0) @binding(0) var<uniform> delta_time: vec2<f32>; // playground-time"],
+    ])("warns about the comment on %s, and fills it as usual", (_, declaration) => {
+        const parsed = parse(shaderWith(declaration));
+        const marked = binding(parsed.bindings);
+
+        expect(marked.time).toBe(false);
+        expect(marked.warning).toMatch(/only fills a `var<uniform>` of type `f32`/);
+        expect(marked.type.getValuesFromString(marked.input)).not.toContain(0);
+        expect(parsed.loop).toBe(false);
+    });
+
+    it("warns about the comment on a storage texture", () => {
+        const field = texture(
+            parse(
+                shaderWithTexture(
+                    "@group(0) @binding(0) var field: texture_storage_2d<rgba8unorm, write>; // playground-time",
+                ),
+            ).bindings,
+            "field",
+        );
+
+        expect(field.warning).toMatch(/only fills a `var<uniform>` of type `f32`/);
+    });
+});
+
+describe("the travelling waves example", () => {
+    const WAVES = travellingWaves.replace(/\/\/\//g, "//");
+
+    it("loops, moving its own clock on before drawing by it", () => {
+        const { bindings, target, loop } = parse(WAVES);
+
+        expect(loop).toBe(true);
+        expect(target.type === "compute" && target.passes.map((pass) => pass.name)).toEqual(["tick", "draw"]);
+        expect(bindings.map((b) => [b.name, b.kind === "buffer" && b.time, b.warning])).toEqual([
+            ["delta_time", true, null],
+            ["elapsed", false, null],
+            ["sources", false, null],
+            ["field", false, null],
+        ]);
     });
 });
 
