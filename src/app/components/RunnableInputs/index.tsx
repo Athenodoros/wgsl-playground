@@ -5,6 +5,7 @@ import { targetRunnables, updateRunnable } from "../../../utilities/runTarget";
 import { Runnable, RunnableFunctionArgument } from "../../../utilities/types";
 import { useVariableDisplayProps } from "../../shared/useVariableDisplayProps";
 import { VariableDisplay } from "../../shared/VariableDisplay";
+import { RunnableKinds } from "./RunnableKinds";
 import { RunnableSelect } from "./RunnableSelect";
 
 export const RunnableInputs: React.FC = () => {
@@ -22,10 +23,15 @@ export const RunnableInputs: React.FC = () => {
     return (
         <SectionCard padded={true}>
             <div className="flex flex-col gap-4">
-                <div className="flex justify-between items-center gap-4">
-                    <p className="!mb-0 bg-slate-100 py-1 px-2 rounded-md shrink-0">Run Target</p>
-                    <div className="flex-1 max-w-2/3">
-                        <RunnableSelect options={options} target={target} setRunTarget={setRunTarget} />
+                <div className="flex flex-col gap-2">
+                    <div className="flex justify-between items-center gap-4">
+                        <p className="!mb-0 bg-slate-100 py-1 px-2 rounded-md shrink-0">Run Target</p>
+                        <RunnableKinds options={options} target={target} setRunTarget={setRunTarget} />
+                    </div>
+                    <div className="flex justify-end min-w-0">
+                        <div className="max-w-2/3 min-w-0">
+                            <RunnableSelect options={options} target={target} setRunTarget={setRunTarget} />
+                        </div>
                     </div>
                 </div>
                 {runnables.map((runnable) => (
