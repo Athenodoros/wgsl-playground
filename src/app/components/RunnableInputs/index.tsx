@@ -140,7 +140,7 @@ const RunnableInputDisplay: React.FC<{ arg: RunnableFunctionArgument }> = ({ arg
  */
 const EntryPointCount: React.FC<{ name: string }> = ({ name }) => (
     <>
-        {name} <span className="text-sm text-slate-400">work group count</span>
+        {name} <span className="text-xs text-slate-400">work group count</span>
     </>
 );
 

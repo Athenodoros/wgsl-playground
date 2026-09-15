@@ -22,6 +22,9 @@ export const RunnableSelect: React.FC<{
     const choices = options.filter((option) => option.type === target.type);
     const toggle = (runnable: Runnable) => setRunTarget(toggleRunnable(target, runnable));
 
+    // The shader has only one of this kind, so the picker has nothing left to decide.
+    const settled = choices.length < 2;
+
     if (target.type !== "compute")
         return (
             <Select<Runnable>
@@ -29,7 +32,7 @@ export const RunnableSelect: React.FC<{
                 itemRenderer={renderRunnable([target.runnable])}
                 onItemSelect={(runnable) => setRunTarget(toggleRunnable({ type: "none" }, runnable))}
                 filterable={false}
-                disabled={choices.length < 2}
+                disabled={settled}
                 popoverProps={{ minimal: true }}
             >
                 <Button
@@ -37,7 +40,7 @@ export const RunnableSelect: React.FC<{
                     variant="outlined"
                     intent="primary"
                     endIcon="chevron-down"
-                    disabled={choices.length < 2}
+                    disabled={settled}
                 />
             </Select>
         );
@@ -55,9 +58,12 @@ export const RunnableSelect: React.FC<{
             tagRenderer={(runnable) => getRunnableProps(runnable).text}
             onItemSelect={toggle}
             onRemove={toggle}
-            onClear={() => setRunTarget({ type: "none" })}
+            // Blueprint draws the clear button from this handler alone, so leaving it off is what
+            // takes the cross away: with one pass there is nothing to clear to, and a disabled cross
+            // reads as something broken rather than something that was never on offer.
+            onClear={settled ? undefined : () => setRunTarget({ type: "none" })}
             placeholder="Nothing to run"
-            disabled={choices.length < 2}
+            disabled={settled}
             popoverProps={{ matchTargetWidth: true, minimal: true }}
         />
     );
