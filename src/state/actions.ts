@@ -1,7 +1,7 @@
 import { StoreApi } from "zustand";
 import { noop, range } from "../utilities/data";
 import { parseWGSL } from "../utilities/parseWGSL";
-import { computeTarget, getDefaultTarget } from "../utilities/runTarget";
+import { computeTarget } from "../utilities/runTarget";
 import { runWGSLFunction } from "../utilities/runWGSLFunction";
 import { ParseResults, RunTarget, Runnable, RunnableFunction } from "../utilities/types";
 import { AppActions, AppFailedParseState, AppFinishedState, AppRunningState, AppState } from "./types";
@@ -181,11 +181,11 @@ const updateParseResultsFromPrevious = (
 
     // Nothing selected is a choice, and an edit elsewhere in the file is no reason to undo it. The
     // fallback is for a target the edit emptied out, and for a shader that had nothing to run in the
-    // first place, where picking up whatever the edit just added is the point.
+    // first place, where picking up whatever the edit just added is the point. `result.target` is
+    // already what a fresh parse of the new code picked, run order and all.
     const clearedByHand = state.target.type === "none" && state.runnables.length > 0;
-    result.target =
-        carryOverTarget(state.target, result.runnables) ??
-        (clearedByHand ? { type: "none" } : getDefaultTarget(result.runnables));
+    if (clearedByHand) result.target = { type: "none" };
+    else result.target = carryOverTarget(state.target, result.runnables) ?? result.target;
 };
 
 /**

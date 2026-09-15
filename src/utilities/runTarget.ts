@@ -26,24 +26,32 @@ export const computeTarget = (passes: RunnableComputeShader[]): RunTarget => {
 };
 
 /**
- * What a shader runs before anything has been picked: its first render pass, else its first compute
- * pass, else its first plain function.
+ * What a shader runs before anything has been picked.
  *
- * Taking whatever is written first instead would pick the helper function at the top of a file whose
- * point is the compute pass below it. Preferring a render pass and then a compute pass picks the
- * thing that draws something, and falling through to a function means a file of nothing but helpers
- * still has something to run.
- *
- * It is one runnable either way. A shader whose passes are meant to run as a chain has no way to say
- * so yet, and guessing it from the order they happen to be written in would be wrong for a file of
- * unrelated kernels.
+ * A shader that declares a run order gets exactly that, which is the only way a chain runs without
+ * being assembled by hand. Otherwise it is one runnable, chosen by what it is rather than by where
+ * it is written: a render pass if there is one, else a compute pass, else a plain function. Taking
+ * whatever came first instead would open a file on the helper function at the top of it rather than
+ * on the compute pass below that the file is for.
  */
-export const getDefaultTarget = (runnables: Runnable[]): RunTarget =>
-    singleTarget(
+export const getDefaultTarget = (runnables: Runnable[], runOrder: string[] | null = null): RunTarget => {
+    const declared = (runOrder ?? []).flatMap((name) =>
+        runnables.filter(
+            (runnable): runnable is RunnableComputeShader => runnable.type === "compute" && runnable.name === name,
+        ),
+    );
+
+    // A run order is taken whole or not at all. Dropping a name that matches nothing would run
+    // something other than what the file says while looking exactly like it had worked, and a
+    // half-applied order is a worse answer than the shader's own first pass.
+    if (runOrder !== null && declared.length === runOrder.length) return computeTarget(declared);
+
+    return singleTarget(
         runnables.find((runnable) => runnable.type === "render") ??
             runnables.find((runnable) => runnable.type === "compute") ??
             runnables.find((runnable) => runnable.type === "function"),
     );
+};
 
 /** The runnables a target names, in the order they run. */
 export const targetRunnables = (target: RunTarget): Runnable[] => {
