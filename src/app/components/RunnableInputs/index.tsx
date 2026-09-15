@@ -54,7 +54,10 @@ const RunnableFields: React.FC<{ runnable: Runnable; named: boolean; update: (ru
 }) => (
     <>
         {runnable.type === "compute" ? (
-            <RunnableInput title={named ? runnable.name : "Work Group Count"} subtext={named ? undefined : "X, Y, Z"}>
+            <RunnableInput
+                title={named ? <EntryPointCount name={runnable.name} /> : "Work Group Count"}
+                subtext={named ? undefined : "X, Y, Z"}
+            >
                 <NumericInputWrapper
                     key={`x-${runnable.directive}`}
                     placeholder="X"
@@ -123,7 +126,19 @@ const RunnableInputDisplay: React.FC<{ arg: RunnableFunctionArgument }> = ({ arg
     return <VariableDisplay title={arg.name} subtitle="function argument" type={arg.type} {...props} />;
 };
 
-const RunnableInput: React.FC<{ title: string; subtext?: string; children: React.ReactNode }> = ({
+/**
+ * Which entry point a work group count belongs to, with the rest of the label stepped back from it.
+ *
+ * Once there is more than one pass, the name is the part that has to be read, and "work group count"
+ * is the part the row already said when there was only one of them.
+ */
+const EntryPointCount: React.FC<{ name: string }> = ({ name }) => (
+    <>
+        {name} <span className="text-sm text-slate-400">work group count</span>
+    </>
+);
+
+const RunnableInput: React.FC<{ title: React.ReactNode; subtext?: string; children: React.ReactNode }> = ({
     title,
     subtext,
     children,
