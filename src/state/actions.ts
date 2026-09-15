@@ -1,8 +1,9 @@
 import { StoreApi } from "zustand";
-import { assertNever, noop, range } from "../utilities/data";
+import { noop, range } from "../utilities/data";
 import { parseWGSL } from "../utilities/parseWGSL";
+import { computeTarget, singleTarget } from "../utilities/runTarget";
 import { runWGSLFunction } from "../utilities/runWGSLFunction";
-import { ParseResults, RunnableComputeShader, RunnableRender } from "../utilities/types";
+import { ParseResults, RunTarget, Runnable, RunnableFunction } from "../utilities/types";
 import { AppActions, AppFailedParseState, AppFinishedState, AppRunningState, AppState } from "./types";
 
 export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi<AppState>["getState"]): AppActions => {
@@ -14,14 +15,15 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
 
         cancel();
 
-        if (state.selected === null) return;
+        const { target } = state;
+        if (target.type === "none") return;
 
         let cancelled = false;
         cancel = () => {
             cancelled = true;
         };
 
-        runWGSLFunction(state.device, state.wgsl, state.selected, state.bindings, state.canvas).then((results) => {
+        runWGSLFunction(state.device, state.wgsl, target, state.bindings, state.canvas).then((results) => {
             if (cancelled) return;
             set({ ...state, type: "finished", results }, true);
         });
@@ -108,11 +110,11 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
             if (state.type === "failed-parse") set({ ...state, bindings }, true);
             else startGPUProcessing({ ...state, type: "running", bindings });
         },
-        selectRunnable: (runnable) => {
+        setRunTarget: (target) => {
             const state = get();
 
-            if (state.type === "loading" || state.type === "failed-parse") set({ ...state, selected: runnable });
-            else startGPUProcessing({ ...state, selected: runnable, type: "running" });
+            if (state.type === "loading" || state.type === "failed-parse") set({ ...state, target });
+            else startGPUProcessing({ ...state, target, type: "running" });
         },
         setRunnableInput: (name: string, input: string, buffer: ArrayBuffer) => {
             const state = get();
@@ -121,19 +123,25 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
                 return;
             }
 
-            if (state.selected?.type !== "function") {
-                console.error(`Cannot set runnable input for ${state.selected?.type} runnable`);
+            // Arguments belong to a function, and a function is the whole target when it is running,
+            // so there is exactly one runnable here to update.
+            if (state.target.type !== "function") {
+                console.error(`Cannot set a function argument while the target is ${state.target.type}`);
                 return;
             }
 
+            const { runnable } = state.target;
             startGPUProcessing({
                 ...state,
                 type: "running",
-                selected: {
-                    ...state.selected,
-                    arguments: state.selected.arguments.map((arg) =>
-                        arg.name === name ? { ...arg, input, buffer } : arg,
-                    ),
+                target: {
+                    type: "function",
+                    runnable: {
+                        ...runnable,
+                        arguments: runnable.arguments.map((arg) =>
+                            arg.name === name ? { ...arg, input, buffer } : arg,
+                        ),
+                    },
                 },
             });
         },
@@ -171,49 +179,67 @@ const updateParseResultsFromPrevious = (
         }
     }
 
-    result.selected =
-        result.runnables.find((r) => {
-            if (r.type === "compute" && state.selected?.type === "compute") return r.name === state.selected.name;
-            if (r.type === "render" && state.selected?.type === "render")
-                return r.fragment === state.selected.fragment && r.vertex === state.selected.vertex;
-            if (r.type === "function" && state.selected?.type === "function") return r.name === state.selected.name;
-        }) ??
-        result.runnables[0] ??
-        null;
+    result.target = carryOverTarget(state.target, result.runnables) ?? singleTarget(result.runnables[0]);
+};
 
-    // Counts set by hand survive an edit, but only while the directive behind them is unchanged -
-    // the same rule the bindings above use for their inputs, so that editing a comment takes effect
-    // instead of being quietly discarded.
-    if (result.selected?.type === "compute") {
-        const previous = state.selected?.type === "compute" ? (state.selected as RunnableComputeShader) : null;
-        if (previous && previous.directive === result.selected.directive) result.selected.threads = previous.threads;
-    } else if (result.selected?.type === "render") {
-        const previous = state.selected?.type === "render" ? (state.selected as RunnableRender) : null;
-        if (previous) {
-            result.selected.fragment = previous.fragment;
-            if (previous.directive === result.selected.directive) result.selected.vertices = previous.vertices;
+/**
+ * The target for a new parse: the same entry points as before, wherever the edit left them in place.
+ *
+ * Null means the edit took away everything the target named, and the caller falls back to what a
+ * fresh parse of the new code would have picked. Each arm matches and carries over together, because
+ * what identifies a runnable across an edit and what is worth keeping off the old one are the same
+ * question asked twice.
+ */
+const carryOverTarget = (previous: RunTarget, runnables: Runnable[]): RunTarget | null => {
+    if (previous.type === "none") return null;
+
+    if (previous.type === "compute") {
+        const passes = previous.passes.flatMap((pass) => {
+            const match = runnables.find((r) => r.type === "compute" && r.name === pass.name);
+            if (match?.type !== "compute") return [];
+
+            // Counts set by hand survive an edit, but only while the directive behind them is
+            // unchanged - the same rule the bindings above use for their inputs, so that editing a
+            // comment takes effect instead of being quietly discarded.
+            if (match.directive === pass.directive) match.threads = pass.threads;
+            return [match];
+        });
+
+        // A sequence outlives the loss of some of its passes, and only becomes nothing when the edit
+        // has taken away every one of them.
+        return passes.length > 0 ? computeTarget(passes) : null;
+    }
+
+    if (previous.type === "render") {
+        const { runnable } = previous;
+        const match = runnables.find(
+            (r) => r.type === "render" && r.vertex === runnable.vertex && r.fragment === runnable.fragment,
+        );
+        if (match?.type !== "render") return null;
+
+        if (match.directive === runnable.directive) match.vertices = runnable.vertices;
+        return { type: "render", runnable: match };
+    }
+
+    const match = runnables.find((r) => r.type === "function" && r.name === previous.runnable.name);
+    if (match?.type !== "function") return null;
+
+    carryOverArguments(match, previous.runnable);
+    return { type: "function", runnable: match };
+};
+
+/** Copies argument values the user typed onto the function that replaced the one they typed them on. */
+const carryOverArguments = (current: RunnableFunction, previous: RunnableFunction) => {
+    for (const idx of range(current.arguments.length)) {
+        const arg = current.arguments[idx];
+        const oldArg = previous.arguments.find((a) => a.name === arg.name) ?? previous.arguments[idx];
+        if (oldArg === undefined) continue;
+
+        const newDefault = arg.type.getDefaultValue();
+        const oldDefault = oldArg.type.getDefaultValue();
+        if (newDefault.type === "values" && oldDefault.type === "values" && newDefault.value === oldDefault.value) {
+            arg.input = oldArg.input;
+            arg.buffer = oldArg.buffer;
         }
-    } else if (result.selected?.type === "function") {
-        // Only a function has arguments to carry over, and the selection before this edit need not
-        // have been one - the compute and render branches above already check, and this did not.
-        const previous = state.selected?.type === "function" ? state.selected : null;
-        if (!previous) {
-            return;
-        }
-
-        const current = result.selected;
-
-        for (const idx of range(current.arguments.length)) {
-            const arg = current.arguments[idx];
-            const oldArg = previous.arguments.find((a) => a.name === arg.name) ?? previous.arguments[idx];
-            if (oldArg === undefined) continue;
-
-            const newDefault = arg.type.getDefaultValue();
-            const oldDefault = oldArg.type.getDefaultValue();
-            if (newDefault.type === "values" && oldDefault.type === "values" && newDefault.value === oldDefault.value) {
-                arg.input = oldArg.input;
-                arg.buffer = oldArg.buffer;
-            }
-        }
-    } else if (result.selected) assertNever(result.selected);
+    }
 };

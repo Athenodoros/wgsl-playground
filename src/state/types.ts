@@ -1,4 +1,4 @@
-import { ParseResults, Runnable, RunnerResults } from "../utilities/types";
+import { ParseResults, RunTarget, RunnerResults } from "../utilities/types";
 
 interface AppLoadingState extends ParseResults {
     type: "loading";
@@ -37,6 +37,6 @@ export interface AppActions {
     setCanvas: (canvas: HTMLCanvasElement | null) => void;
     setWGSL: (wgsl: string | undefined) => void;
     setBindingInput: (id: string, input: string, buffer: ArrayBuffer) => void;
-    selectRunnable: (runnable: Runnable) => void;
+    setRunTarget: (target: RunTarget) => void;
     setRunnableInput: (name: string, input: string, buffer: ArrayBuffer) => void;
 }

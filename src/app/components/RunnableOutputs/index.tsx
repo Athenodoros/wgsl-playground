@@ -6,7 +6,7 @@ import { OutputCanvas } from "./OutputCanvas";
 
 export const RunnableOutputs: React.FC = () => {
     const parseError = useAppState((state) => (state.type === "failed-parse" ? state.error : null));
-    const output = useAppState((state) => state.selected);
+    const selectedFunction = useAppState((state) => (state.target.type === "function" ? state.target.runnable : null));
     const results = useAppState((state) => (state.type === "finished" ? state.results : null));
     const device = useAppState((state) => state.device);
 
@@ -14,8 +14,8 @@ export const RunnableOutputs: React.FC = () => {
     // texture - which goes there rather than into the outputs below, being far too big to read.
     const drawsToCanvas = useAppState(
         (state) =>
-            state.selected?.type === "render" ||
-            (state.selected?.type === "compute" && state.bindings.some((binding) => binding.kind === "texture")),
+            state.target.type === "render" ||
+            (state.target.type === "compute" && state.bindings.some((binding) => binding.kind === "texture")),
     );
 
     if (device === null) {
@@ -68,13 +68,13 @@ export const RunnableOutputs: React.FC = () => {
                             />
                         ))
                         .concat(
-                            results.returned && output?.type === "function" && output.output
+                            results.returned && selectedFunction?.output
                                 ? [
                                       <VariableDisplay
                                           key="function-output"
                                           title="Function Output"
-                                          subtitle={output.name}
-                                          type={output.output}
+                                          subtitle={selectedFunction.name}
+                                          type={selectedFunction.output}
                                           value={results.returned.value}
                                           isError={false}
                                       />,

@@ -56,32 +56,31 @@ const DREW_SOMETHING: RunnerResults = { type: "outputs", bindings: [], returned:
 describe("setWGSL", () => {
     it("selects a function after an edit from a shader that had none", () => {
         const store = storeShowing(RENDER_SHADER);
-        expect(store.getState().selected?.type).toBe("render");
+        expect(store.getState().target.type).toBe("render");
 
         store.actions.setWGSL(FUNCTION_SHADER);
 
-        const selected = store.getState().selected;
-        expect(selected?.type).toBe("function");
-        expect(selected?.type === "function" && selected.arguments.map((a) => a.name)).toEqual(["a", "b"]);
+        const target = store.getState().target;
+        expect(target.type).toBe("function");
+        expect(target.type === "function" && target.runnable.arguments.map((a) => a.name)).toEqual(["a", "b"]);
     });
 
     it("keeps argument values across an edit that leaves the function alone", () => {
         const store = storeShowing(FUNCTION_SHADER);
-        const selected = store.getState().selected;
-        if (selected?.type !== "function") throw new Error("expected a function to be selected");
+        if (store.getState().target.type !== "function") throw new Error("expected a function to be selected");
 
         store.actions.setRunnableInput("a", "7.0", new ArrayBuffer(4));
         store.actions.setWGSL(FUNCTION_SHADER + "\n// an edit elsewhere\n");
 
-        const after = store.getState().selected;
-        expect(after?.type === "function" && after.arguments.find((a) => a.name === "a")?.input).toBe("7.0");
+        const after = store.getState().target;
+        expect(after.type === "function" && after.runnable.arguments.find((a) => a.name === "a")?.input).toBe("7.0");
     });
 
     it("does not carry a compute selection's counts onto an unrelated shader", () => {
         const store = storeShowing(FUNCTION_SHADER);
         store.actions.setWGSL(RENDER_SHADER);
 
-        expect(store.getState().selected?.type).toBe("render");
+        expect(store.getState().target.type).toBe("render");
     });
 });
 

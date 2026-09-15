@@ -94,6 +94,10 @@ export const deepEqualsList = <T>(array: T[]): boolean => {
 /**
  * Array Utils
  */
+/** An array the type system knows has a first element, for a list that is empty-or-nothing. */
+export type NonEmpty<T> = [T, ...T[]];
+export const nonEmpty = <T>(array: T[]): NonEmpty<T> | null => (array.length > 0 ? (array as NonEmpty<T>) : null);
+
 export const reverse = <T>(array: T[]): T[] => [...array].reverse();
 export const range = (a: number, b?: number, step = 1): number[] => {
     if (step === 0) throw new Error("Step cannot be 0");

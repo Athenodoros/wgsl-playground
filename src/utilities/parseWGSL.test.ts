@@ -54,10 +54,10 @@ describe("the interference pattern example", () => {
     });
 
     it("dispatches 8x8 work groups that cover the texture exactly", () => {
-        const { selected } = parse(EXAMPLE);
-        const [x, y] = selected?.type === "compute" ? selected.threads : [0, 0];
+        const { target } = parse(EXAMPLE);
+        const [x, y] = target.type === "compute" ? target.passes[0].threads : [0, 0];
 
-        expect(selected?.type === "compute" && selected.threads).toEqual([80, 45, 1]);
+        expect(target.type === "compute" && target.passes[0].threads).toEqual([80, 45, 1]);
         expect([x * 8, y * 8]).toEqual([OUTPUT_CANVAS_WIDTH, OUTPUT_CANVAS_HEIGHT]);
     });
 

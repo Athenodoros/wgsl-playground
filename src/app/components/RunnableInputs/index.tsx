@@ -1,15 +1,21 @@
 import { Callout, NumericInput, NumericInputProps, SectionCard } from "@blueprintjs/core";
 import React, { useCallback } from "react";
 import { useAppState } from "../../../state";
-import { RunnableFunctionArgument } from "../../../utilities/types";
+import { singleTarget, targetRunnables } from "../../../utilities/runTarget";
+import { Runnable, RunnableFunctionArgument } from "../../../utilities/types";
 import { useVariableDisplayProps } from "../../shared/useVariableDisplayProps";
 import { VariableDisplay } from "../../shared/VariableDisplay";
 import { RunnableDropdown } from "./RunnableDropdown";
 
 export const RunnableInputs: React.FC = () => {
-    const output = useAppState((state) => state.selected);
-    const setOutput = useAppState((state) => state.selectRunnable);
+    const target = useAppState((state) => state.target);
+    const setRunTarget = useAppState((state) => state.setRunTarget);
     const options = useAppState((state) => state.runnables);
+
+    // One thing runs at a time still, so the dropdown shows whichever runnable the target names and
+    // picking another replaces it.
+    const output: Runnable | null = targetRunnables(target)[0] ?? null;
+    const setOutput = (runnable: Runnable) => setRunTarget(singleTarget(runnable));
 
     return (
         <SectionCard padded={true}>

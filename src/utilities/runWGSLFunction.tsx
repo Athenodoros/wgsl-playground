@@ -1,11 +1,11 @@
 import { ResourceType } from "wgsl_reflect";
-import { assertNever, range, uniq } from "./data";
+import { NonEmpty, range, uniq } from "./data";
 import { getReflectionOrError } from "./parseWGSL";
 import { STORAGE_TEXTURE_FORMATS, StorageTextureFormat } from "./storageTextures";
 import {
+    ActiveRunTarget,
     BindingOutput,
     FunctionOutput,
-    Runnable,
     RunnableComputeShader,
     RunnableFunction,
     RunnableRender,
@@ -23,7 +23,7 @@ const STUB_FUNCTION_RUNNER_NAME = "_wgsl_playground_function_runner__";
 export const runWGSLFunction = async (
     device: GPUDevice,
     wgsl: string,
-    runnable: Runnable,
+    target: ActiveRunTarget,
     bindings: WgslBinding[],
     canvas: HTMLCanvasElement,
 ): Promise<RunnerResults> => {
@@ -39,12 +39,14 @@ export const runWGSLFunction = async (
 
     device.pushErrorScope("validation");
 
-    if (runnable.type === "render") return runRenderShader(device, wgsl, runnable, bindings, canvas);
-    if (runnable.type === "compute") return runComputeShader(device, wgsl, runnable, bindings, canvas);
-    if (runnable.type === "function") return runSimpleFunction(device, wgsl, runnable, bindings);
-
-    assertNever(runnable);
-    return { type: "errors", errors: [formatRuntimeError(new Error("Unsupported runnable type"))] }; // Never reaches this point
+    switch (target.type) {
+        case "render":
+            return runRenderShader(device, wgsl, target.runnable, bindings, canvas);
+        case "compute":
+            return runComputeShaders(device, wgsl, target.passes, bindings, canvas);
+        case "function":
+            return runSimpleFunction(device, wgsl, target.runnable, bindings);
+    }
 };
 
 const runSimpleFunction = async (
@@ -57,7 +59,9 @@ const runSimpleFunction = async (
     if (runner.type === "error") return { type: "errors", errors: [formatRuntimeError(new Error(runner.error))] };
 
     const module = device.createShaderModule({ code: runner.code });
-    const { buffers } = runComputeModule(device, module, runner.bindings, STUB_FUNCTION_RUNNER_NAME, [1, 1, 1]);
+    const { buffers } = runComputeModule(device, module, runner.bindings, [
+        { name: STUB_FUNCTION_RUNNER_NAME, threads: [1, 1, 1] },
+    ]);
     const buffer = buffers[STUB_FUNCTION_RUNNER_OUTPUT_BINDING_ID];
     const value = await readBufferValue(device, buffer, runner.outputBindingType);
 
@@ -140,15 +144,22 @@ const runRenderShader = async (
     return maybeReturnResults(wgsl, [], device, module, null, getTextureValue);
 };
 
-const runComputeShader = async (
+/**
+ * Runs compute entry points in order, over one set of bindings.
+ *
+ * The resources are built once and every pass is handed the same bind groups, which is what makes
+ * one pass read what the pass before it wrote. Only the state left at the end is read back: the
+ * passes in between are working steps, and reading each one would cost more than the run itself.
+ */
+const runComputeShaders = async (
     device: GPUDevice,
     wgsl: string,
-    runnable: RunnableComputeShader,
+    passes: NonEmpty<RunnableComputeShader>,
     bindings: WgslBinding[],
     canvas: HTMLCanvasElement,
 ): Promise<RunnerResults> => {
     const module = device.createShaderModule({ code: wgsl });
-    const { buffers, textures } = runComputeModule(device, module, bindings, runnable.name, runnable.threads);
+    const { buffers, textures } = runComputeModule(device, module, bindings, passes);
 
     // A storage texture has no CPU-side value to stringify, and stringifying one would be the slowest
     // thing the playground does, so it goes to the canvas instead of into the outputs panel.
@@ -545,35 +556,64 @@ fn ${STUB_FUNCTION_RUNNER_NAME}() {
     return { type: "code", code, bindings: originalBindings.concat(newBindings), outputBindingType };
 };
 
+/** An entry point to dispatch, and how many work groups to dispatch it over. */
+export interface ComputePass {
+    name: string;
+    threads: [number, number, number];
+}
+
+/** Builds the resources the passes share, then encodes and submits them. */
 const runComputeModule = (
     device: GPUDevice,
     module: GPUShaderModule,
     bindings: WgslBinding[],
-    name: string,
-    threads: [number, number, number],
+    passes: NonEmpty<ComputePass>,
 ) => {
     const { buffers, textures, bindGroups, pipelineLayout } = getBindingResources(
         bindings,
         device,
         GPUShaderStage.COMPUTE,
     );
-    const pipeline = device.createComputePipeline({
-        label: `Runner for ${name}`,
-        layout: pipelineLayout,
-        compute: { module, entryPoint: name },
-    });
 
-    const commandEncoder = device.createCommandEncoder();
-    const computePass = commandEncoder.beginComputePass();
-    computePass.setPipeline(pipeline);
-    for (const [groupId, bindGroup] of bindGroups) {
-        computePass.setBindGroup(groupId, bindGroup);
-    }
-    computePass.dispatchWorkgroups(...threads);
-    computePass.end();
-    device.queue.submit([commandEncoder.finish()]);
+    encodeComputePasses(device, module, pipelineLayout, bindGroups, passes);
 
     return { buffers, textures };
+};
+
+/**
+ * Encodes a pass per entry point into one submit, all of them sharing the bind groups they are given.
+ *
+ * Each entry point gets a pass of its own rather than all of them sharing one, because a pass is the
+ * boundary WebGPU synchronises across: a later pass is guaranteed to see what an earlier one wrote,
+ * where whether one dispatch in a pass sees the one before it is still argued over in the spec.
+ * Passes are cheap and the guarantee is not, so this takes the one that holds.
+ */
+export const encodeComputePasses = (
+    device: GPUDevice,
+    module: GPUShaderModule,
+    pipelineLayout: GPUPipelineLayout,
+    bindGroups: readonly (readonly [number, GPUBindGroup])[],
+    passes: NonEmpty<ComputePass>,
+) => {
+    const commandEncoder = device.createCommandEncoder();
+
+    for (const { name, threads } of passes) {
+        const pipeline = device.createComputePipeline({
+            label: `Runner for ${name}`,
+            layout: pipelineLayout,
+            compute: { module, entryPoint: name },
+        });
+
+        const computePass = commandEncoder.beginComputePass({ label: name });
+        computePass.setPipeline(pipeline);
+        for (const [groupId, bindGroup] of bindGroups) {
+            computePass.setBindGroup(groupId, bindGroup);
+        }
+        computePass.dispatchWorkgroups(...threads);
+        computePass.end();
+    }
+
+    device.queue.submit([commandEncoder.finish()]);
 };
 
 const readBufferValue = async (device: GPUDevice, buffer: GPUBuffer, type: WGSLType): Promise<string> => {

@@ -1,6 +1,7 @@
 import { IconName, Intent } from "@blueprintjs/core";
 import { ReactNode } from "react";
 import { Attribute, ResourceType, StructInfo } from "wgsl_reflect";
+import { NonEmpty } from "./data";
 import { StorageTextureFormat } from "./storageTextures";
 import { WGSLType } from "./WGSLType";
 
@@ -108,8 +109,30 @@ export interface RunnableRender {
 
 export type Runnable = RunnableComputeShader | RunnableRender | RunnableFunction;
 
+/**
+ * What a run dispatches, and the one place that says what can be run alongside what.
+ *
+ * Only compute shaders chain, so only they arrive as a list. A function is run through a generated
+ * entry point of its own with bindings to match, and a render pass needs its bindings visible to
+ * stages a compute pass does not use, so neither composes with anything else. Saying that here,
+ * rather than checking it wherever a target is used, is what lets the runner switch over this and be
+ * done - there is no combination left for it to reject.
+ *
+ * Targets are built through the helpers in `runTarget.ts`, which is what keeps `passes` non-empty:
+ * an empty sequence is `none`, not a second way of spelling it.
+ */
+export type RunTarget =
+    | { type: "none" }
+    | { type: "compute"; passes: NonEmpty<RunnableComputeShader> }
+    | { type: "render"; runnable: RunnableRender }
+    | { type: "function"; runnable: RunnableFunction };
+
+/** A target with something in it, which is what the runner takes. */
+export type ActiveRunTarget = Exclude<RunTarget, { type: "none" }>;
+
 export interface ParseResults {
-    selected: Runnable | null;
+    /** What runs, out of the `runnables` below. */
+    target: RunTarget;
     runnables: Runnable[];
     bindings: WgslBinding[];
     structs: StructInfo[];
