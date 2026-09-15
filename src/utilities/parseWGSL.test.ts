@@ -79,13 +79,20 @@ fn second() { }
 });
 
 describe("the interference pattern example", () => {
-    it("parses into a uniform buffer and a storage texture", () => {
+    it("parses into a uniform buffer, a storage buffer and a storage texture", () => {
         const { bindings } = parse(EXAMPLE);
 
         expect(bindings.map((binding) => [binding.name, binding.kind])).toEqual([
             ["scene", "buffer"],
+            ["peak", "buffer"],
             ["field", "texture"],
         ]);
+    });
+
+    it("measures before it draws, since the drawing divides by what the measuring finds", () => {
+        const { target } = parse(EXAMPLE);
+
+        expect(target.type === "compute" && target.passes.map((pass) => pass.name)).toEqual(["measure", "draw"]);
     });
 
     it("says nothing about the texture's size, and so gets the canvas'", () => {
@@ -99,9 +106,10 @@ describe("the interference pattern example", () => {
 
     it("dispatches 8x8 work groups that cover the texture exactly", () => {
         const { target } = parse(EXAMPLE);
-        const [x, y] = target.type === "compute" ? target.passes[0].threads : [0, 0];
+        const draw = target.type === "compute" ? target.passes.find((pass) => pass.name === "draw") : undefined;
+        const [x, y] = draw?.threads ?? [0, 0];
 
-        expect(target.type === "compute" && target.passes[0].threads).toEqual([80, 45, 1]);
+        expect(draw?.threads).toEqual([80, 45, 1]);
         expect([x * 8, y * 8]).toEqual([OUTPUT_CANVAS_WIDTH, OUTPUT_CANVAS_HEIGHT]);
     });
 
