@@ -21,17 +21,10 @@ fn fragment_main() -> @location(0) vec4<f32> {
 }
 `;
 
-// The plain function comes first, so it is what the new parse selects.
+// Nothing in it but a plain function, so a function is what a new parse picks.
 const FUNCTION_SHADER = `
-@group(0) @binding(0) var<storage, read_write> output: array<f32>; // 3 * 0
-
 fn scaled_sum(a: f32, b: f32) -> f32 {
     return (a + b) * 2.0;
-}
-
-@compute @workgroup_size(1, 1, 1)
-fn run() {
-    output[0] = scaled_sum(1.0, 2.0);
 }
 `;
 
@@ -56,32 +49,43 @@ const DREW_SOMETHING: RunnerResults = { type: "outputs", bindings: [], returned:
 describe("setWGSL", () => {
     it("selects a function after an edit from a shader that had none", () => {
         const store = storeShowing(RENDER_SHADER);
-        expect(store.getState().selected?.type).toBe("render");
+        expect(store.getState().target.type).toBe("render");
 
         store.actions.setWGSL(FUNCTION_SHADER);
 
-        const selected = store.getState().selected;
-        expect(selected?.type).toBe("function");
-        expect(selected?.type === "function" && selected.arguments.map((a) => a.name)).toEqual(["a", "b"]);
+        const target = store.getState().target;
+        expect(target.type).toBe("function");
+        expect(target.type === "function" && target.runnable.arguments.map((a) => a.name)).toEqual(["a", "b"]);
     });
 
     it("keeps argument values across an edit that leaves the function alone", () => {
         const store = storeShowing(FUNCTION_SHADER);
-        const selected = store.getState().selected;
-        if (selected?.type !== "function") throw new Error("expected a function to be selected");
+        if (store.getState().target.type !== "function") throw new Error("expected a function to be selected");
 
         store.actions.setRunnableInput("a", "7.0", new ArrayBuffer(4));
         store.actions.setWGSL(FUNCTION_SHADER + "\n// an edit elsewhere\n");
 
-        const after = store.getState().selected;
-        expect(after?.type === "function" && after.arguments.find((a) => a.name === "a")?.input).toBe("7.0");
+        const after = store.getState().target;
+        expect(after.type === "function" && after.runnable.arguments.find((a) => a.name === "a")?.input).toBe("7.0");
+    });
+
+    // Clearing the target is allowed, and used to last only until the next keystroke: an edit found
+    // nothing to carry over and fell back to the default, which looks identical to the target having
+    // been emptied out by the edit itself.
+    it("leaves a target cleared by hand cleared across an edit elsewhere", () => {
+        const store = storeShowing(RENDER_SHADER);
+        store.actions.setRunTarget({ type: "none" });
+
+        store.actions.setWGSL(RENDER_SHADER + "\n// an edit elsewhere\n");
+
+        expect(store.getState().target.type).toBe("none");
     });
 
     it("does not carry a compute selection's counts onto an unrelated shader", () => {
         const store = storeShowing(FUNCTION_SHADER);
         store.actions.setWGSL(RENDER_SHADER);
 
-        expect(store.getState().selected?.type).toBe("render");
+        expect(store.getState().target.type).toBe("render");
     });
 });
 

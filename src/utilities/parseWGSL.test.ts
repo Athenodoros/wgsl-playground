@@ -34,14 +34,65 @@ fn paint(@builtin(global_invocation_id) id: vec3<u32>) {
 }
 `;
 
+describe("what a shader runs before anything is picked", () => {
+    // Written first in each shader below, so picking it would be picking whatever came first.
+    const HELPER = `
+fn doubled(a: f32) -> f32 { return a * 2.0; }
+`;
+    const COMPUTE = `
+@compute @workgroup_size(1, 1, 1)
+fn accumulate() { }
+`;
+    const RENDER = `
+@vertex
+fn vertex_main() -> @builtin(position) vec4<f32> { return vec4<f32>(0.0); }
+
+@fragment
+fn fragment_main() -> @location(0) vec4<f32> { return vec4<f32>(1.0); }
+`;
+
+    it("prefers a render pass, then a compute pass, then a plain function", () => {
+        expect(parse(HELPER + COMPUTE + RENDER).target.type).toBe("render");
+        expect(parse(HELPER + COMPUTE).target.type).toBe("compute");
+        expect(parse(HELPER).target.type).toBe("function");
+    });
+
+    const TWO_PASSES = `
+@compute @workgroup_size(1, 1, 1)
+fn first() { }
+
+@compute @workgroup_size(1, 1, 1)
+fn second() { }
+`;
+
+    it("runs the chain a shader declares, in the order it declares it", () => {
+        const { target } = parse(`// playground-compute-run-order: second, first\n${TWO_PASSES}`);
+
+        expect(target.type === "compute" && target.passes.map((pass) => pass.name)).toEqual(["second", "first"]);
+    });
+
+    it("passes over a run order naming something that is not there, rather than running part of it", () => {
+        const { target } = parse(`// playground-compute-run-order: second, typo\n${TWO_PASSES}`);
+
+        expect(target.type === "compute" && target.passes.map((pass) => pass.name)).toEqual(["first"]);
+    });
+});
+
 describe("the interference pattern example", () => {
-    it("parses into a uniform buffer and a storage texture", () => {
+    it("parses into a uniform buffer, a storage buffer and a storage texture", () => {
         const { bindings } = parse(EXAMPLE);
 
         expect(bindings.map((binding) => [binding.name, binding.kind])).toEqual([
             ["scene", "buffer"],
+            ["peak", "buffer"],
             ["field", "texture"],
         ]);
+    });
+
+    it("measures before it draws, since the drawing divides by what the measuring finds", () => {
+        const { target } = parse(EXAMPLE);
+
+        expect(target.type === "compute" && target.passes.map((pass) => pass.name)).toEqual(["measure", "draw"]);
     });
 
     it("says nothing about the texture's size, and so gets the canvas'", () => {
@@ -54,10 +105,11 @@ describe("the interference pattern example", () => {
     });
 
     it("dispatches 8x8 work groups that cover the texture exactly", () => {
-        const { selected } = parse(EXAMPLE);
-        const [x, y] = selected?.type === "compute" ? selected.threads : [0, 0];
+        const { target } = parse(EXAMPLE);
+        const draw = target.type === "compute" ? target.passes.find((pass) => pass.name === "draw") : undefined;
+        const [x, y] = draw?.threads ?? [0, 0];
 
-        expect(selected?.type === "compute" && selected.threads).toEqual([80, 45, 1]);
+        expect(draw?.threads).toEqual([80, 45, 1]);
         expect([x * 8, y * 8]).toEqual([OUTPUT_CANVAS_WIDTH, OUTPUT_CANVAS_HEIGHT]);
     });
 

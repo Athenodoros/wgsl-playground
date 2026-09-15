@@ -6,16 +6,17 @@ import { OutputCanvas } from "./OutputCanvas";
 
 export const RunnableOutputs: React.FC = () => {
     const parseError = useAppState((state) => (state.type === "failed-parse" ? state.error : null));
-    const output = useAppState((state) => state.selected);
+    const selectedFunction = useAppState((state) => (state.target.type === "function" ? state.target.runnable : null));
     const results = useAppState((state) => (state.type === "finished" ? state.results : null));
     const device = useAppState((state) => state.device);
+    const hasRunTarget = useAppState((state) => state.target.type !== "none");
 
     // A render runnable always draws to the canvas, and a compute one does when it writes a storage
     // texture - which goes there rather than into the outputs below, being far too big to read.
     const drawsToCanvas = useAppState(
         (state) =>
-            state.selected?.type === "render" ||
-            (state.selected?.type === "compute" && state.bindings.some((binding) => binding.kind === "texture")),
+            state.target.type === "render" ||
+            (state.target.type === "compute" && state.bindings.some((binding) => binding.kind === "texture")),
     );
 
     if (device === null) {
@@ -46,6 +47,19 @@ export const RunnableOutputs: React.FC = () => {
         );
     }
 
+    if (!hasRunTarget) {
+        return (
+            <SectionCard padded={true}>
+                <OutputCanvas hidden={true} />
+                <NonIdealState
+                    icon="widget"
+                    title="Nothing Selected"
+                    description="Pick something to run from the list above."
+                />
+            </SectionCard>
+        );
+    }
+
     return (
         <SectionCard padded={false} className="my-4 flex flex-col gap-4">
             <OutputCanvas hidden={!drawsToCanvas || (results !== null && results.type !== "outputs")} />
@@ -68,13 +82,13 @@ export const RunnableOutputs: React.FC = () => {
                             />
                         ))
                         .concat(
-                            results.returned && output?.type === "function" && output.output
+                            results.returned && selectedFunction?.output
                                 ? [
                                       <VariableDisplay
                                           key="function-output"
                                           title="Function Output"
-                                          subtitle={output.name}
-                                          type={output.output}
+                                          subtitle={selectedFunction.name}
+                                          type={selectedFunction.output}
                                           value={results.returned.value}
                                           isError={false}
                                       />,

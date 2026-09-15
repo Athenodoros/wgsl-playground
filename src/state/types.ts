@@ -1,4 +1,4 @@
-import { ParseResults, Runnable, RunnerResults } from "../utilities/types";
+import { ParseResults, RunTarget, RunnerResults } from "../utilities/types";
 
 interface AppLoadingState extends ParseResults {
     type: "loading";
@@ -36,7 +36,9 @@ export interface AppActions {
     setDevice: (device: GPUDevice | null) => void;
     setCanvas: (canvas: HTMLCanvasElement | null) => void;
     setWGSL: (wgsl: string | undefined) => void;
+    /** Replaces the code with an example, which is a new file rather than an edit to the one open. */
+    loadExample: (wgsl: string) => void;
     setBindingInput: (id: string, input: string, buffer: ArrayBuffer) => void;
-    selectRunnable: (runnable: Runnable) => void;
+    setRunTarget: (target: RunTarget) => void;
     setRunnableInput: (name: string, input: string, buffer: ArrayBuffer) => void;
 }

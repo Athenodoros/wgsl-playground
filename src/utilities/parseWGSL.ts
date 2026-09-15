@@ -1,6 +1,7 @@
 import { ResourceType, VariableInfo, WgslReflect } from "wgsl_reflect";
 import { OUTPUT_CANVAS_HEIGHT, OUTPUT_CANVAS_WIDTH } from "./canvas";
-import { getDirectiveSource, getRunCounts } from "./directives";
+import { getDirectiveSource, getRunCounts, getRunOrder } from "./directives";
+import { getDefaultTarget } from "./runTarget";
 import { getStorageTextureSupport } from "./storageTextures";
 import { ParseResults, Runnable, RunnableFunction, WgslBinding, WgslTextureBinding } from "./types";
 import { WGSLType } from "./WGSLType";
@@ -70,13 +71,15 @@ export const parseWGSL = (
     if (error) return { type: "failed-parse", error };
 
     const runnables = getFunctionRunOptions(reflect.reflect, wgsl);
+    const runOrder = getRunOrder(wgsl);
 
     return {
         type: "running",
         structs: reflect.reflect.structs,
         bindings: bindings as WgslBinding[],
         runnables,
-        selected: runnables[0] ?? null,
+        runOrder,
+        target: getDefaultTarget(runnables, runOrder),
     };
 };
 

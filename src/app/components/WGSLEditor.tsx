@@ -12,10 +12,13 @@ import { ShareButton } from "./ShareButton";
 export const WGSLEditor: React.FC = () => {
     const wgsl = useAppState((state) => state.wgsl);
     const setWGSL = useAppState((state) => state.setWGSL);
+    const loadExample = useAppState((state) => state.loadExample);
     const [setEditorValue, setSetEditorValue] = useState<(value: string) => void>(noop);
 
     const setExample = (example: string) => () => {
-        setWGSL(example);
+        // Loaded before the editor is told, so the change the editor then reports is already the code
+        // on show and is not taken for an edit to it.
+        loadExample(example);
         setEditorValue(example);
     };
 
