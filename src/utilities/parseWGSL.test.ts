@@ -34,6 +34,30 @@ fn paint(@builtin(global_invocation_id) id: vec3<u32>) {
 }
 `;
 
+describe("what a shader runs before anything is picked", () => {
+    // Written first in each shader below, so picking it would be picking whatever came first.
+    const HELPER = `
+fn doubled(a: f32) -> f32 { return a * 2.0; }
+`;
+    const COMPUTE = `
+@compute @workgroup_size(1, 1, 1)
+fn accumulate() { }
+`;
+    const RENDER = `
+@vertex
+fn vertex_main() -> @builtin(position) vec4<f32> { return vec4<f32>(0.0); }
+
+@fragment
+fn fragment_main() -> @location(0) vec4<f32> { return vec4<f32>(1.0); }
+`;
+
+    it("prefers a render pass, then a compute pass, then a plain function", () => {
+        expect(parse(HELPER + COMPUTE + RENDER).target.type).toBe("render");
+        expect(parse(HELPER + COMPUTE).target.type).toBe("compute");
+        expect(parse(HELPER).target.type).toBe("function");
+    });
+});
+
 describe("the interference pattern example", () => {
     it("parses into a uniform buffer and a storage texture", () => {
         const { bindings } = parse(EXAMPLE);

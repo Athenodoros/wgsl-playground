@@ -21,17 +21,10 @@ fn fragment_main() -> @location(0) vec4<f32> {
 }
 `;
 
-// The plain function comes first, so it is what the new parse selects.
+// Nothing in it but a plain function, so a function is what a new parse picks.
 const FUNCTION_SHADER = `
-@group(0) @binding(0) var<storage, read_write> output: array<f32>; // 3 * 0
-
 fn scaled_sum(a: f32, b: f32) -> f32 {
     return (a + b) * 2.0;
-}
-
-@compute @workgroup_size(1, 1, 1)
-fn run() {
-    output[0] = scaled_sum(1.0, 2.0);
 }
 `;
 

@@ -1,7 +1,7 @@
 import { StoreApi } from "zustand";
 import { noop, range } from "../utilities/data";
 import { parseWGSL } from "../utilities/parseWGSL";
-import { computeTarget, singleTarget } from "../utilities/runTarget";
+import { computeTarget, getDefaultTarget } from "../utilities/runTarget";
 import { runWGSLFunction } from "../utilities/runWGSLFunction";
 import { ParseResults, RunTarget, Runnable, RunnableFunction } from "../utilities/types";
 import { AppActions, AppFailedParseState, AppFinishedState, AppRunningState, AppState } from "./types";
@@ -179,7 +179,7 @@ const updateParseResultsFromPrevious = (
         }
     }
 
-    result.target = carryOverTarget(state.target, result.runnables) ?? singleTarget(result.runnables[0]);
+    result.target = carryOverTarget(state.target, result.runnables) ?? getDefaultTarget(result.runnables);
 };
 
 /**
