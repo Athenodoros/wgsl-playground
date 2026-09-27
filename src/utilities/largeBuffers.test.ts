@@ -62,6 +62,23 @@ describe("large buffers", () => {
         expect(isLargeBuffer(binding("var<storage, read> xs: array<f32, 21>;"))).toBe(true);
     });
 
+    it("summarises a buffer too big to be short text before writing any of it out", () => {
+        // A runtime-sized array inside a struct has no rows to count, so only its size gives it away.
+        const bigBlob = { ...binding("var<storage, read> xs: array<f32, 4>;"), buffer: new ArrayBuffer(4 * 5001) };
+        expect(getBufferLength(bigBlob).rows).toBe(4);
+        expect(isLargeBuffer(bigBlob)).toBe(true);
+    });
+
+    it("summarises a few rows whose text is too long to read", () => {
+        const transforms = binding("var<storage, read> xs: array<mat4x4<f32>, 20>;");
+        expect(isLargeBuffer(transforms)).toBe(false);
+
+        const oneLine = `[ ${Array(320).fill("0.18923820555210114").join(", ")} ]`;
+        expect(isLargeBuffer(transforms, oneLine)).toBe(true);
+        expect(isLargeBuffer(transforms, oneLine.replace(/, /g, ",\n"))).toBe(false);
+        expect(isLargeBuffer(transforms, "0,\n".repeat(3400))).toBe(true);
+    });
+
     it("can still render up to two hundred rows on request", () => {
         expect(canRenderBuffer(binding("var<storage, read> xs: array<f32, 200>;"))).toBe(true);
         expect(canRenderBuffer(binding("var<storage, read> xs: array<Chaser, 101>;", CHASER))).toBe(false);

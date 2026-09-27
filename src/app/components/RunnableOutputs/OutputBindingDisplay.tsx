@@ -7,7 +7,7 @@ import {
     describeBufferLength,
     isLargeBuffer,
     LARGE_BUFFER_ROWS,
-    RENDERABLE_BUFFER_ROWS,
+    LARGE_TEXT_CHARS,
 } from "../../../utilities/largeBuffers";
 import { BindingOutput } from "../../../utilities/types";
 import { AppToaster } from "../../shared/AppToaster";
@@ -22,7 +22,7 @@ export const OutputBindingDisplay: React.FC<{ output: BindingOutput }> = ({ outp
     const rendered = useAppState((state) => state.renderedOutputs.includes(binding.id));
     const setOutputRendered = useAppState((state) => state.setOutputRendered);
 
-    if (!isLargeBuffer(binding)) return <BindingDisplay binding={binding} value={value ?? ""} isError={false} />;
+    if (!isLargeBuffer(binding, value)) return <BindingDisplay binding={binding} value={value ?? ""} isError={false} />;
 
     // A rendered output is summarised until the read that includes it lands.
     if (rendered && canRenderBuffer(binding) && value !== null)
@@ -81,11 +81,12 @@ const LargeOutputSummary: React.FC<{ output: BindingOutput; rendering: boolean }
             binding={binding}
             info={
                 <>
-                    Buffers over {LARGE_BUFFER_ROWS} rows are not read back after a run, which for a loop can take
-                    longer than running it. Copy Values reads them from the GPU as the last frame left them.{" "}
+                    Buffers over {LARGE_BUFFER_ROWS} rows, or {LARGE_TEXT_CHARS.toLocaleString("en")} characters, are
+                    not shown as text, and the longest are not read back after a run - which for a loop can take longer
+                    than running it. Copy Values reads them from the GPU as the last frame left them.{" "}
                     {renderable
                         ? "Render Output reads them back after every run, and shows them."
-                        : `Buffers over ${RENDERABLE_BUFFER_ROWS} rows cannot be shown at all.`}
+                        : "This one is too long to be shown at all."}
                 </>
             }
             actions={

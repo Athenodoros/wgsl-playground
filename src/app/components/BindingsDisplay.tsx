@@ -6,7 +6,7 @@ import {
     describeBufferLength,
     isLargeBuffer,
     LARGE_BUFFER_ROWS,
-    RENDERABLE_BUFFER_ROWS,
+    LARGE_TEXT_CHARS,
 } from "../../utilities/largeBuffers";
 import { WgslBinding, WgslBufferBinding } from "../../utilities/types";
 import { AppToaster } from "../shared/AppToaster";
@@ -70,7 +70,7 @@ const BufferBindingDisplay: React.FC<{ binding: WgslBufferBinding }> = ({ bindin
     // Showing a large input as text is a choice made for this binding while it is on screen, and it
     // changes nothing about the run, so it is kept here rather than in the app's state.
     const [rendered, setRendered] = useState(false);
-    const large = isLargeBuffer(binding);
+    const large = isLargeBuffer(binding, binding.input);
 
     if (large && !(rendered && canRenderBuffer(binding)))
         return <LargeInputSummary binding={binding} readOnly={readOnly} render={() => setRendered(true)} />;
@@ -135,11 +135,10 @@ const LargeInputSummary: React.FC<{ binding: WgslBufferBinding; readOnly: boolea
             binding={binding}
             info={
                 <>
-                    Buffers over {LARGE_BUFFER_ROWS} rows are not shown as text, being too long to edit by hand and slow
-                    to display. Paste Values replaces them with JSON from the clipboard.{" "}
-                    {renderable
-                        ? "Render Input shows them anyway."
-                        : `Buffers over ${RENDERABLE_BUFFER_ROWS} rows cannot be shown at all.`}
+                    Buffers over {LARGE_BUFFER_ROWS} rows, or {LARGE_TEXT_CHARS.toLocaleString("en")} characters, are
+                    not shown as text, being too long to edit by hand and slow to display. Paste Values replaces them
+                    with JSON from the clipboard.{" "}
+                    {renderable ? "Render Input shows them anyway." : "This one is too long to be shown at all."}
                 </>
             }
             actions={
