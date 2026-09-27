@@ -208,3 +208,11 @@ describe("setCanvas", () => {
         expect(store.getState().type).toBe("finished");
     });
 });
+
+describe("readOutput", () => {
+    it("has nothing to read an output from before anything has run", async () => {
+        const store = storeShowing(RENDER_SHADER, DREW_SOMETHING);
+
+        await expect(store.actions.readOutput("0:0")).rejects.toThrow(/no run to read from/);
+    });
+});
