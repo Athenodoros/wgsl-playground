@@ -128,10 +128,25 @@ fn vertex_main() -> @builtin(position) vec4<f32> { }`}</code>
                                 <code>@workgroup_size</code> sets. Trailing dimensions can be left off, so{" "}
                                 <code>// 16</code> means <code>16, 1, 1</code>.
                             </p>
+                            <p className="my-3">
+                                A count can also name one of the shader's own <code>const</code> declarations, so it
+                                follows the size of what it covers. Anything worked out goes in the const, where it is
+                                WGSL - so dividing one <code>u32</code> by another rounds down:
+                            </p>
+                            <pre className="bg-slate-100 rounded p-3 overflow-x-auto text-xs">
+                                <code>{`const CHASERS = 20000u;
+const THREADS = 64u;
+const GROUPS = (CHASERS + THREADS - 1) / THREADS;
+
+@compute // GROUPS
+@workgroup_size(THREADS)
+fn step() { }`}</code>
+                            </pre>
                             <p className="mt-3">
-                                Counts have to be whole numbers of at least one, so <code>rand</code> and the
-                                parentheses and <code>*</code> used for binding values are not accepted here. Without a
-                                comment a run starts at <code>1, 1, 1</code> work groups or <code>3</code> vertices.
+                                Counts have to be whole numbers of at least one, and a comment only lists them: there is
+                                no arithmetic, and none of the <code>rand</code> or <code>*</code> repetition used for
+                                binding values. A storage texture's size is written the same way. Without a comment a
+                                run starts at <code>1, 1, 1</code> work groups or <code>3</code> vertices.
                             </p>
                         </section>
 
@@ -166,10 +181,10 @@ fn draw() { }`}</code>
                         <section>
                             <h3 className="font-semibold mb-2">Running in a loop</h3>
                             <p className="mb-3">
-                                Tick <strong>Run in loop</strong> under the Run Target to run a compute or render
-                                target once per frame, with controls to play, pause and reset it. Buffers and textures
-                                last from one frame to the next, so each frame reads what the one before it wrote.
-                                Reset throws that away and starts again from the binding values.
+                                Tick <strong>Run in loop</strong> under the Run Target to run a compute or render target
+                                once per frame, with controls to play, pause and reset it. Buffers and textures last
+                                from one frame to the next, so each frame reads what the one before it wrote. Reset
+                                throws that away and starts again from the binding values.
                             </p>
                             <p className="mb-3">
                                 Mark an <code>f32</code> uniform with this comment to have the playground fill it with

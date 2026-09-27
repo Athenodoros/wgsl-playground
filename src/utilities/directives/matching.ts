@@ -22,15 +22,20 @@ import { TypeShape } from "./typeShape";
  * The text of the directive in force, or null if there is none.
  *
  * A comment with no digits in it was never an attempt at a directive - it is prose about the
- * binding - so it is passed over rather than reported as a broken one.
+ * binding - so it is passed over rather than reported as a broken one. A directive that can say
+ * something without a digit, as a count naming a const can, passes its own test for what counts.
  */
-export const getDirectiveSource = (attributes: Attribute[] | null, wgsl: string): string | null => {
+export const getDirectiveSource = (
+    attributes: Attribute[] | null,
+    wgsl: string,
+    isDirective: (comment: string) => boolean = (comment) => /\d/.test(comment),
+): string | null => {
     const codeLines = wgsl.split("\n");
 
     return (
         attributes
             ?.map((attribute) => codeLines[attribute.line - 1]?.match(/\/\/\/?(.*)/)?.[1]?.trim() || null)
-            ?.find((comment) => comment !== null && /\d/.test(comment)) ?? null
+            ?.find((comment) => comment !== null && isDirective(comment)) ?? null
     );
 };
 
