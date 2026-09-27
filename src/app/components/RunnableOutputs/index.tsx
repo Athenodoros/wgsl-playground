@@ -1,7 +1,7 @@
 import { Callout, NonIdealState, SectionCard } from "@blueprintjs/core";
 import { useAppState } from "../../../state";
-import { BindingDisplay } from "../../shared/BindingDisplay";
 import { VariableDisplay } from "../../shared/VariableDisplay";
+import { OutputBindingDisplay } from "./OutputBindingDisplay";
 import { OutputCanvas } from "./OutputCanvas";
 
 export const RunnableOutputs: React.FC = () => {
@@ -73,14 +73,7 @@ export const RunnableOutputs: React.FC = () => {
                   ))
                 : results?.type === "outputs"
                   ? results.bindings
-                        .map((result) => (
-                            <BindingDisplay
-                                key={result.binding.id}
-                                binding={result.binding}
-                                value={result.value}
-                                isError={false}
-                            />
-                        ))
+                        .map((result) => <OutputBindingDisplay key={result.binding.id} output={result} />)
                         .concat(
                             results.returned && selectedFunction?.output
                                 ? [

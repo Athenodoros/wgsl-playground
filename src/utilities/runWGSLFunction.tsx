@@ -71,18 +71,25 @@ export interface RunSession {
     destroy: () => void;
 }
 
+/**
+ * Which buffers a session's reads include. Every read copies each buffer back from the GPU and writes
+ * it out as text, which for a large buffer read a few times a second costs more than running it.
+ */
+export type ShouldReadBinding = (binding: WgslBufferBinding) => boolean;
+
 export const createRunSession = (
     device: GPUDevice,
     wgsl: string,
     target: LoopableRunTarget,
     bindings: WgslBinding[],
     canvas: HTMLCanvasElement,
+    shouldRead: ShouldReadBinding = () => true,
 ): RunSession => {
     assertSupportedBindings(bindings);
 
     return target.type === "render"
         ? createRenderSession(device, wgsl, target.runnable, bindings, canvas)
-        : createComputeSession(device, wgsl, target.passes, bindings, canvas);
+        : createComputeSession(device, wgsl, target.passes, bindings, canvas, shouldRead);
 };
 
 /** Reads one of a session's buffers back, for `RunSession.readBinding`. */
@@ -323,6 +330,7 @@ const createComputeSession = (
     passes: NonEmpty<RunnableComputeShader>,
     bindings: WgslBinding[],
     canvas: HTMLCanvasElement,
+    shouldRead: ShouldReadBinding,
 ): RunSession => {
     const scopes = createErrorScopes(device);
 
@@ -364,11 +372,12 @@ const createComputeSession = (
                 values: Promise.all(
                     bindings
                         .filter((binding): binding is WgslBufferBinding => binding.kind === "buffer" && binding.writable)
-                        .map((binding) =>
-                            readBufferValue(device, resources.buffers[binding.id], binding.type).then((value) => ({
-                                binding,
-                                value,
-                            })),
+                        .map((binding): Promise<BindingOutput> =>
+                            shouldRead(binding)
+                                ? readBufferValue(device, resources.buffers[binding.id], binding.type).then(
+                                      (value) => ({ binding, value }),
+                                  )
+                                : Promise.resolve({ binding, value: null }),
                         ),
                 ),
                 texture:

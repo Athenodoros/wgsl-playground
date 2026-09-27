@@ -19,6 +19,11 @@ export interface LoopCallbacks {
 export interface Loop {
     play: () => void;
     pause: () => void;
+    /**
+     * Reads the session back again, for when what a read includes has changed. A paused loop reads
+     * straight away, in full; a playing one brings its next read forward to the coming frame.
+     */
+    refresh: () => void;
     /** Stops for good, and frees what the session built. */
     stop: () => void;
 }
@@ -112,6 +117,11 @@ export const startLoop = (session: RunSession, playing: boolean, { show, halted 
             if (stopped || handle === null) return;
             halt();
             read(true);
+        },
+        refresh: () => {
+            if (stopped) return;
+            if (handle === null) read(true);
+            else lastReadAt = -Infinity;
         },
         stop: () => {
             stopped = true;

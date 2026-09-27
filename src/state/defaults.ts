@@ -17,4 +17,5 @@ export const INITIAL_APP_STATE: AppState = {
     wgsl: INITIAL_SHARE_LINK.code ?? defaultVertexShader,
     playing: true,
     clock: STOPPED_CLOCK,
+    renderedOutputs: [],
 };

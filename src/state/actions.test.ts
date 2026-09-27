@@ -40,6 +40,7 @@ const storeShowing = (wgsl: string, results?: RunnerResults) => {
         wgsl,
         playing: true,
         clock: STOPPED_CLOCK,
+        renderedOutputs: [] as string[],
     };
     let state: AppState = results ? { ...common, type: "finished", results } : { ...common, type: "running" };
 
@@ -214,5 +215,37 @@ describe("readOutput", () => {
         const store = storeShowing(RENDER_SHADER, DREW_SOMETHING);
 
         await expect(store.actions.readOutput("0:0")).rejects.toThrow(/no run to read from/);
+    });
+});
+
+describe("large outputs", () => {
+    const LARGE_SHADER = `
+@group(0) @binding(0) var<storage, read_write> field: array<f32, 100>;
+
+@compute @workgroup_size(1)
+fn fill() {}
+`;
+
+    it("remembers which are shown as text, across an edit", () => {
+        const store = storeShowing(LARGE_SHADER, DREW_SOMETHING);
+
+        store.actions.setOutputRendered("0:0", true);
+        store.actions.setOutputRendered("0:0", true);
+        expect(store.getState().renderedOutputs).toEqual(["0:0"]);
+
+        store.actions.setWGSL(LARGE_SHADER + "\n// an edit elsewhere\n");
+        expect(store.getState().renderedOutputs).toEqual(["0:0"]);
+
+        store.actions.setOutputRendered("0:0", false);
+        expect(store.getState().renderedOutputs).toEqual([]);
+    });
+
+    it("forgets them for an example, whose bindings only share ids by chance", () => {
+        const store = storeShowing(LARGE_SHADER, DREW_SOMETHING);
+
+        store.actions.setOutputRendered("0:0", true);
+        store.actions.loadExample(LARGE_SHADER + "\n// an example\n");
+
+        expect(store.getState().renderedOutputs).toEqual([]);
     });
 });
