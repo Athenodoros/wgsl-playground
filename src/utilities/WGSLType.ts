@@ -23,6 +23,7 @@ export class WGSLType {
     getValuesFromString = (value: string) => getValuesFromStringForType(this.type, this.structs, value);
     getBufferFromString = (value: string) => getBufferFromStringForType(this.type, this.structs, value);
     getStringFromBuffer = (buffer: ArrayBuffer) => getStringFromBufferForType(this.type, this.structs, buffer);
+    getLength = (byteLength: number) => getLengthForType(this.type, this.structs, byteLength);
 }
 
 export const getTypeDisplay = (type: TypeInfo): string => {
@@ -349,4 +350,43 @@ const getStringFromBufferForType = (type: TypeInfo, structs: StructInfo[], buffe
     }
 
     return JSON.stringify(values.length === 1 ? values[0] : values, undefined, "\n").replace(/\n+/g, " ");
+};
+
+/**
+ * How long a value is: the rows it takes laid out with one array element or struct member to a line,
+ * counting the elements of arrays nested inside it too, and how many elements it has if it is an array.
+ *
+ * Rows are what decide whether a value is worth showing as text. The text itself is no guide - an
+ * array of scalars is written on a single line however long it gets - but a value too long to read
+ * as rows is too long to read at all.
+ */
+export interface ValueLength {
+    rows: number;
+    elements: number | null;
+}
+
+const getLengthForType = (type: TypeInfo, structs: StructInfo[], byteLength: number): ValueLength => {
+    if (!type.isArray) return { rows: getRowCount(type, structs), elements: null };
+
+    const arrayType = type as ArrayInfo;
+    let elements = arrayType.count;
+    if (!elements) {
+        // A runtime-sized array is as long as its buffer, laid out as the buffer spec lays it out.
+        const spec = getBufferSpec(type, structs);
+        elements = spec ? byteLength / 4 / spec.lines[0].length : 0;
+    }
+
+    return { rows: elements * getRowCount(arrayType.format, structs), elements };
+};
+
+const getRowCount = (type: TypeInfo, structs: StructInfo[]): number => {
+    const struct = structs.find((s) => s.name === type.name);
+    if (struct) return struct.members.reduce((rows, member) => rows + getRowCount(member.type, structs), 0);
+
+    if (type.isArray) {
+        const arrayType = type as ArrayInfo;
+        return arrayType.count * getRowCount(arrayType.format, structs);
+    }
+
+    return 1;
 };
