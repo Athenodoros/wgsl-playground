@@ -45,6 +45,7 @@ const recordingSession = (read: (withTexture: boolean) => Promise<RunnerResults>
             reads.push(withTexture);
             return read(withTexture);
         },
+        readBinding: () => Promise.resolve("0"),
         destroy: () => {
             destroyed = true;
         },
@@ -121,6 +122,7 @@ describe("startLoop", () => {
                 return new Promise((resolve) => finish.push(() => resolve(null)));
             },
             read: () => Promise.resolve(OUTPUTS),
+            readBinding: () => Promise.resolve("0"),
             destroy: () => {},
         };
         const shown = callbacks();

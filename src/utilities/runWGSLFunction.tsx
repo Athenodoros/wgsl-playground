@@ -63,6 +63,11 @@ export interface RunSession {
      * the slowest part, and so is left off while a loop is running.
      */
     read: (withTexture: boolean) => Promise<RunnerResults>;
+    /**
+     * Reads one buffer binding's value as the last frame left it, whether or not `read` includes it.
+     * It is how a buffer too big to follow along with is still got at, when someone asks for it.
+     */
+    readBinding: (id: string) => Promise<string>;
     destroy: () => void;
 }
 
@@ -78,6 +83,20 @@ export const createRunSession = (
     return target.type === "render"
         ? createRenderSession(device, wgsl, target.runnable, bindings, canvas)
         : createComputeSession(device, wgsl, target.passes, bindings, canvas);
+};
+
+/** Reads one of a session's buffers back, for `RunSession.readBinding`. */
+const readSessionBinding = (
+    device: GPUDevice,
+    bindings: WgslBinding[],
+    buffers: Record<string, GPUBuffer>,
+    id: string,
+): Promise<string> => {
+    const binding = bindings.find((b): b is WgslBufferBinding => b.kind === "buffer" && b.id === id);
+    if (binding === undefined || buffers[id] === undefined)
+        return Promise.reject(new Error(`No buffer binding ${id} to read`));
+
+    return readBufferValue(device, buffers[id], binding.type);
 };
 
 const assertSupportedBindings = (bindings: WgslBinding[]) => {
@@ -283,6 +302,7 @@ const createRenderSession = (
 
             return collectResults(wgsl, module, scopes.caught(), [], null, await texture);
         },
+        readBinding: (id) => readSessionBinding(device, bindings, resources.buffers, id),
         destroy: () => {
             depthTexture?.destroy();
             destroyResources(resources);
@@ -359,6 +379,7 @@ const createComputeSession = (
 
             return collectResults(wgsl, module, scopes.caught(), await values, null, await texture);
         },
+        readBinding: (id) => readSessionBinding(device, bindings, resources.buffers, id),
         destroy: () => destroyResources(resources),
     };
 };

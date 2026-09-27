@@ -46,4 +46,6 @@ export interface AppActions {
     pause: () => void;
     /** Throws away everything a loop has written, and starts it again from the bindings' values. */
     reset: () => void;
+    /** Reads a buffer's value as the run in progress, or the last one, left it. */
+    readOutput: (id: string) => Promise<string>;
 }
