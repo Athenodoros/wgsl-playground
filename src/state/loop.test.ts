@@ -45,6 +45,7 @@ const recordingSession = (read: (withTexture: boolean) => Promise<RunnerResults>
             reads.push(withTexture);
             return read(withTexture);
         },
+        readBinding: () => Promise.resolve("0"),
         destroy: () => {
             destroyed = true;
         },
@@ -121,6 +122,7 @@ describe("startLoop", () => {
                 return new Promise((resolve) => finish.push(() => resolve(null)));
             },
             read: () => Promise.resolve(OUTPUTS),
+            readBinding: () => Promise.resolve("0"),
             destroy: () => {},
         };
         const shown = callbacks();
@@ -207,6 +209,35 @@ describe("startLoop", () => {
         expect(reads).toEqual([true]);
         expect(shown.shown[0][1]).toEqual({ frames: 1, elapsed: 0 });
         expect(frames.scheduled()).toBe(false);
+    });
+
+    it("reads again in full on refresh while paused", async () => {
+        const { session, reads } = recordingSession();
+        const shown = callbacks();
+        const loop = startLoop(session, false, shown);
+        await settle();
+
+        loop.refresh();
+        await settle();
+
+        expect(reads).toEqual([true, true]);
+        expect(shown.shown).toHaveLength(2);
+    });
+
+    it("brings its next read forward on refresh while playing, rather than reading out of turn", async () => {
+        const frames = animationFrames();
+        const { session, reads } = recordingSession();
+        const loop = startLoop(session, true, callbacks());
+
+        frames.fire(0);
+        await settle();
+        loop.refresh();
+        expect(reads).toEqual([false]);
+
+        frames.fire(16);
+        await settle();
+
+        expect(reads).toEqual([false, false]);
     });
 
     it("frees the session on stop, and shows nothing that was still being read", async () => {

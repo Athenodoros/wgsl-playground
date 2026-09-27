@@ -2,7 +2,8 @@ import { StoreApi } from "zustand";
 import { noop, range } from "../utilities/data";
 import { hasTimeUniform, parseWGSL } from "../utilities/parseWGSL";
 import { computeTarget, resolveRunOrder, targetRunnables } from "../utilities/runTarget";
-import { createRunSession, runWGSLFunction } from "../utilities/runWGSLFunction";
+import { canRenderBuffer, isLargeBuffer } from "../utilities/largeBuffers";
+import { createRunSession, RunSession, runWGSLFunction, ShouldReadBinding } from "../utilities/runWGSLFunction";
 import {
     LoopClock,
     ParseResults,
@@ -21,6 +22,17 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
     let stop: () => void = noop;
     /** The loop under way, when the run is one. */
     let activeLoop: Loop | null = null;
+    /**
+     * The GPU resources behind the last compute or render run, kept until the next one starts rather
+     * than freed as soon as it is read, so that a buffer left out of the read can still be asked for.
+     */
+    let activeSession: RunSession | null = null;
+    /** Reads the run under way back again, after what a read includes has changed. */
+    let refresh: () => void = noop;
+
+    /** Large buffers are read back only once someone has asked to see them as text. */
+    const shouldRead: ShouldReadBinding = (binding) =>
+        !isLargeBuffer(binding) || (canRenderBuffer(binding) && get().renderedOutputs.includes(binding.id));
 
     /**
      * Shows results on top of the state as it is now, rather than as it was when the run started, so
@@ -54,8 +66,15 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
 
         updateParseResultsFromPrevious(result, state, source);
 
-        // An example that opened paused would look like one that does not work.
-        startGPUProcessing({ ...state, ...result, wgsl, playing: source === "example" || state.playing });
+        // An example that opened paused would look like one that does not work. Its bindings are new,
+        // too, so whatever was shown of the last file's does not carry over to ids they happen to share.
+        startGPUProcessing({
+            ...state,
+            ...result,
+            wgsl,
+            playing: source === "example" || state.playing,
+            renderedOutputs: source === "example" ? [] : state.renderedOutputs,
+        });
     };
 
     /**
@@ -67,7 +86,9 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
     const startGPUProcessing = (state: AppRunningState) => {
         stop();
         stop = noop;
+        refresh = noop;
         activeLoop = null;
+        activeSession = null;
 
         set({ ...state, clock: STOPPED_CLOCK }, true);
         if (state.device === null) return;
@@ -76,7 +97,7 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
         if (target.type === "none") return;
 
         // A plain function has nothing to loop over: it is handed its arguments and hands back a value.
-        if (target.type === "function" || !state.loop) {
+        if (target.type === "function") {
             let cancelled = false;
             stop = () => {
                 cancelled = true;
@@ -88,10 +109,31 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
             return;
         }
 
-        const session = createRunSession(device, state.wgsl, target, state.bindings, state.canvas);
+        const session = createRunSession(device, state.wgsl, target, state.bindings, state.canvas, shouldRead);
+        activeSession = session;
+
+        if (!state.loop) {
+            let cancelled = false;
+            stop = () => {
+                cancelled = true;
+                session.destroy();
+            };
+
+            const read = () =>
+                session.read(true).then((results) => {
+                    if (!cancelled) show(results);
+                });
+            refresh = read;
+
+            session.frame(0);
+            read();
+            return;
+        }
+
         const loop = startLoop(session, state.playing, { show, halted: () => set({ playing: false }) });
         activeLoop = loop;
         stop = loop.stop;
+        refresh = loop.refresh;
     };
 
     return {
@@ -211,8 +253,20 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
         },
         reset: () => {
             const state = get();
-            if (state.type === "running" || state.type === "finished") startGPUProcessing({ ...state, type: "running" });
+            if (state.type === "running" || state.type === "finished")
+                startGPUProcessing({ ...state, type: "running" });
         },
+        setOutputRendered: (id, rendered) => {
+            const { renderedOutputs } = get();
+            if (renderedOutputs.includes(id) === rendered) return;
+
+            set({ renderedOutputs: rendered ? [...renderedOutputs, id] : renderedOutputs.filter((o) => o !== id) });
+            refresh();
+        },
+        readOutput: (id) =>
+            activeSession === null
+                ? Promise.reject(new Error("There is no run to read from"))
+                : activeSession.readBinding(id),
     };
 };
 

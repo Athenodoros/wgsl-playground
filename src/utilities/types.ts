@@ -47,7 +47,8 @@ export type WgslBinding = WgslBufferBinding | WgslTextureBinding;
 
 export interface BindingOutput {
     binding: WgslBufferBinding;
-    value: string;
+    /** Null for a buffer too large to read back on every run, until it is asked for. */
+    value: string | null;
 }
 
 export interface FunctionOutput {

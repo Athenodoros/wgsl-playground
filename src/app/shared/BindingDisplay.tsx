@@ -1,6 +1,8 @@
-import React from "react";
+import React, { ReactNode } from "react";
 import { WgslBinding } from "../../utilities/types";
-import { VariableDisplay, VariableHeader } from "./VariableDisplay";
+import { getBindingSubtitle } from "./bindingSubtitle";
+import { BindingSummary } from "./BindingSummary";
+import { VariableDisplay } from "./VariableDisplay";
 
 export const BindingDisplay: React.FC<{
     binding: WgslBinding;
@@ -8,30 +10,30 @@ export const BindingDisplay: React.FC<{
     isError: boolean;
     onChange?: (value?: string) => void;
     readOnly?: boolean;
-}> = ({ binding, value, isError, onChange, readOnly }) => {
-    const subtitle = `(Group ${binding.group}, Binding ${binding.index})`;
-
+    actions?: ReactNode;
+}> = ({ binding, value, isError, onChange, readOnly, actions }) => {
     // The playground writes the time in itself on every frame, so there is no value to edit or to
     // show - only what it will hold.
     if (binding.kind === "buffer" && binding.time)
         return (
-            <div className="mr-4">
-                <VariableHeader title={binding.name} subtitle={subtitle} type={binding.type} />
-                <p className="!mb-0 ml-4 text-sm italic text-slate-400">
-                    Filled in by the playground with the seconds since the last frame.
-                </p>
-            </div>
+            <BindingSummary
+                binding={binding}
+                info="The playground writes the seconds since the last frame into this uniform before every frame, so there is nothing here to edit."
+            >
+                Seconds since the last frame
+            </BindingSummary>
         );
 
     return (
         <VariableDisplay
             title={binding.name}
-            subtitle={subtitle}
+            subtitle={getBindingSubtitle(binding)}
             type={binding.type}
             value={value}
             isError={isError}
             onChange={onChange}
             readOnly={readOnly}
+            actions={actions}
         />
     );
 };
