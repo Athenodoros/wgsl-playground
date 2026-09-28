@@ -24,7 +24,28 @@ export class WGSLType {
     getBufferFromString = (value: string) => getBufferFromStringForType(this.type, this.structs, value);
     getStringFromBuffer = (buffer: ArrayBuffer) => getStringFromBufferForType(this.type, this.structs, buffer);
     getLength = (byteLength: number) => getLengthForType(this.type, this.structs, byteLength);
+    getSignature = () => getTypeSignature(this.type, this.structs);
 }
+
+/**
+ * The type spelled out in full, down through the members of any structs in it, so that two types
+ * with the same signature lay their values out the same way. It is cheap to compare, unlike the
+ * values themselves, which for a large array run to megabytes of text.
+ */
+const getTypeSignature = (type: TypeInfo, structs: StructInfo[]): string => {
+    const struct = structs.find((s) => s.name === type.name);
+    if (struct)
+        return `${struct.name} { ${struct.members
+            .map((member) => `${member.name}: ${getTypeSignature(member.type, structs)}`)
+            .join(", ")} }`;
+
+    if (type.isArray) {
+        const arrayType = type as ArrayInfo;
+        return `array<${getTypeSignature(arrayType.format, structs)}, ${arrayType.count || "runtime"}>`;
+    }
+
+    return getTypeDisplay(type);
+};
 
 export const getTypeDisplay = (type: TypeInfo): string => {
     // Textures and samplers carry their format and access mode in the template, and without them the

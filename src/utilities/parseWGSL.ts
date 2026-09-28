@@ -19,8 +19,18 @@ export const getReflectionOrError = (wgsl: string, addToWindow: boolean = false)
     }
 };
 
+/**
+ * Reads a shader: what it binds, what it can run, and what each binding starts with.
+ *
+ * `previous` is the bindings from before an edit. Values the user set by hand are kept across it, but
+ * only while the binding's shape and the directive comment behind it are unchanged - and then they are
+ * taken as they are, rather than generated only to be thrown away, which for a simulation's state is
+ * most of the time a parse takes. The comment cannot be compared by the values it produces, since
+ * `rand` gives different ones every time.
+ */
 export const parseWGSL = (
     wgsl: string,
+    previous: WgslBinding[] = [],
 ): ({ type: "running" } & ParseResults) | { type: "failed-parse"; error: string } => {
     const reflect = getReflectionOrError(wgsl, true);
     if (reflect.type === "error") return { type: "failed-parse", error: reflect.error };
@@ -67,6 +77,19 @@ export const parseWGSL = (
             // Nothing has run yet, so no time has passed: this is also what a run that is not looping
             // sees, which keeps a shader that moves things by it standing still.
             if (time) return { ...common, kind: "buffer", warning: null, input: "0.0", buffer: new ArrayBuffer(4), time };
+
+            // A binding that has just stopped being the time uniform should not start from the zero it
+            // held, and a misplaced time marker is left to be reported afresh.
+            const old = previous.find((b) => b.id === id) ?? previous.find((b) => b.name === binding.name);
+            if (
+                old?.kind === "buffer" &&
+                !old.time &&
+                markerWarning === null &&
+                old.warning !== TIME_MARKER_WARNING &&
+                old.directive === common.directive &&
+                old.type.getSignature() === type.getSignature()
+            )
+                return { ...common, kind: "buffer", warning: old.warning, input: old.input, buffer: old.buffer, time };
 
             const input = type.getDefaultValueForAttributes(binding.attributes, wgsl);
             if (input.type === "error") {

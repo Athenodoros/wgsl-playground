@@ -265,3 +265,59 @@ fn paint() {}
         expect(parseError(wgsl)).toMatch(/texture_2d not supported/);
     });
 });
+
+describe("values carried over from before an edit", () => {
+    const shader = (declaration: string, structs = "struct Point { x: f32, y: f32 }") => `
+${structs}
+@group(0) @binding(0) ${declaration}
+
+@compute @workgroup_size(1)
+fn step() {}
+`;
+
+    /** The bindings a first parse gives, with the first one's value set by hand. */
+    const edited = (wgsl: string) => {
+        const [binding, ...rest] = parse(wgsl).bindings;
+        if (binding.kind !== "buffer") throw new Error("expected a buffer binding");
+        return [{ ...binding, input: "hand-set", buffer: new ArrayBuffer(binding.buffer.byteLength) }, ...rest];
+    };
+
+    const input = (wgsl: string, previous: WgslBinding[]) => {
+        const binding = parseWGSL(wgsl, previous);
+        if (binding.type === "failed-parse") throw new Error(binding.error);
+        const first = binding.bindings[0];
+        return first.kind === "buffer" ? first.input : null;
+    };
+
+    it("keeps what was set by hand across an edit elsewhere", () => {
+        const wgsl = shader("var<storage, read> points: array<Point, 4>; // rand(0, 1)");
+        const previous = edited(wgsl);
+
+        expect(input(wgsl + "\n// an edit elsewhere\n", previous)).toBe("hand-set");
+    });
+
+    it("keeps a value found by name, when the binding has moved", () => {
+        const previous = edited(shader("var<storage, read> points: array<Point, 4>; // 0"));
+        const moved = shader("var<storage, read> points: array<Point, 4>; // 0").replace("@binding(0)", "@binding(3)");
+
+        expect(input(moved, previous)).toBe("hand-set");
+    });
+
+    it("starts again from an edited directive", () => {
+        const previous = edited(shader("var<storage, read> points: array<Point, 4>; // 0"));
+
+        expect(input(shader("var<storage, read> points: array<Point, 4>; // 1"), previous)).not.toBe("hand-set");
+    });
+
+    it("starts again when the shape changes, down to a struct's members", () => {
+        const previous = edited(shader("var<storage, read> points: array<Point, 4>; // 0"));
+
+        expect(input(shader("var<storage, read> points: array<Point, 5>; // 0"), previous)).not.toBe("hand-set");
+        expect(
+            input(
+                shader("var<storage, read> points: array<Point, 4>; // 0", "struct Point { x: f32, y: u32 }"),
+                previous,
+            ),
+        ).not.toBe("hand-set");
+    });
+});
