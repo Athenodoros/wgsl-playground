@@ -186,6 +186,27 @@ describe("rand", () => {
     });
 });
 
+describe("randg", () => {
+    it("is a single value, so it broadcasts, and a deviation of zero gives the mean", () => {
+        expect(match("randg(5, 0)", VEC3)).toEqual([5, 5, 5]);
+    });
+
+    it("draws from a normal distribution with the mean and deviation given", () => {
+        const values = match("20000 * randg(320, 45)", RUNTIME_ARRAY) as number[];
+        const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+        const deviation = Math.sqrt(values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length);
+
+        expect(mean).toBeCloseTo(320, -0.5);
+        expect(deviation).toBeGreaterThan(43);
+        expect(deviation).toBeLessThan(47);
+
+        // About 68% of a normal distribution lies within one deviation of its mean.
+        const within = values.filter((value) => Math.abs(value - 320) < 45).length / values.length;
+        expect(within).toBeGreaterThan(0.66);
+        expect(within).toBeLessThan(0.7);
+    });
+});
+
 describe("comments that are not directives", () => {
     it("reports rather than silently filling with ones", () => {
         expect(match("the output buffer", RUNTIME_ARRAY)).toMatch(/^ERROR/);

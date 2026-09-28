@@ -7,9 +7,11 @@ const brief = (node: DirectiveNode): string =>
         ? String(node.value)
         : node.type === "rand"
           ? `rand(${node.min},${node.max})`
-          : node.type === "repeat"
-            ? `${node.count}*${brief(node.item)}`
-            : `(${node.items.map(brief).join(" ")})`;
+          : node.type === "randg"
+            ? `randg(${node.mean},${node.deviation})`
+            : node.type === "repeat"
+              ? `${node.count}*${brief(node.item)}`
+              : `(${node.items.map(brief).join(" ")})`;
 
 const parse = (comment: string) => {
     const result = parseDirective(comment);
@@ -55,6 +57,17 @@ describe("parseDirective", () => {
         expect(parse("  5   *   (  1 , 2 )  ")).toBe("5*(1 2)");
         expect(parse(" 7 ")).toBe("7");
         expect(parse("\t1, 2\t")).toBe("1 2");
+    });
+
+    it("parses randg, and tells it apart from rand", () => {
+        expect(parse("randg(320, 45)")).toBe("randg(320,45)");
+        expect(parse("(randg(320, 45), rand(0, 1))")).toBe("(randg(320,45) rand(0,1))");
+        expect(parse("4 * randg(0, 1)")).toBe("4*randg(0,1)");
+    });
+
+    it("rejects malformed randg, naming its arguments", () => {
+        expect(parse("randg(1)")).toMatch(/`randg` needs two arguments/);
+        expect(parse("randg 1, 2")).toMatch(/`randg` must be followed by `\(mean, deviation\)`/);
     });
 
     it("rejects malformed rand", () => {

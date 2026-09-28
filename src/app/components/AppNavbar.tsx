@@ -61,12 +61,14 @@ const HelpNavbarButton: React.FC = () => {
                             <h3 className="font-semibold mb-2">Default binding values</h3>
                             <p className="mb-3">
                                 Add a comment to a resource binding declaration to choose its initial values. One value
-                                fills the whole binding, whatever its type, and <code>rand(min, max)</code> is drawn
-                                separately for every slot it fills:
+                                fills the whole binding, whatever its type. <code>rand(min, max)</code> draws evenly from
+                                a range, and <code>randg(mean, deviation)</code> from a normal distribution, separately
+                                for every slot they fill:
                             </p>
                             <pre className="bg-slate-100 rounded p-3 overflow-x-auto text-xs">
                                 <code>{`@group(0) @binding(0) var<storage, read_write> output: array<i32>; // 0
-@group(0) @binding(1) var<uniform> jitter: vec3<f32>;              // rand(-1, 1)`}</code>
+@group(0) @binding(1) var<uniform> jitter: vec3<f32>;              // rand(-1, 1)
+@group(0) @binding(2) var<uniform> noise: vec3<f32>;               // randg(0, 0.5)`}</code>
                             </pre>
                             <p className="my-3">A comma-separated list gives the components one by one:</p>
                             <pre className="bg-slate-100 rounded p-3 overflow-x-auto text-xs">
@@ -144,9 +146,10 @@ fn step() { }`}</code>
                             </pre>
                             <p className="mt-3">
                                 Counts have to be whole numbers of at least one, and a comment only lists them: there is
-                                no arithmetic, and none of the <code>rand</code> or <code>*</code> repetition used for
-                                binding values. A storage texture's size is written the same way. Without a comment a
-                                run starts at <code>1, 1, 1</code> work groups or <code>3</code> vertices.
+                                no arithmetic, and none of the <code>rand</code>, <code>randg</code> or <code>*</code>{" "}
+                                repetition used for binding values. A storage texture's size is written the same way.
+                                Without a comment a run starts at <code>1, 1, 1</code> work groups or <code>3</code>{" "}
+                                vertices.
                             </p>
                         </section>
 

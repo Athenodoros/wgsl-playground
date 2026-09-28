@@ -18,9 +18,9 @@ import { getDirectiveSource } from "./matching";
  *     @compute @workgroup_size(64) // GROUPS
  *
  * That is all a dimension can be: a number, or a const. Any arithmetic belongs in the const, where it
- * is WGSL, rather than in a comment where `*` already means repetition for binding values. `rand` and
- * the value grammar's nesting have nothing to describe here and are refused. Trailing dimensions may be
- * left off, as they can be on `@workgroup_size` itself, so `// 16` is `16, 1, 1`.
+ * is WGSL, rather than in a comment where `*` already means repetition for binding values. `rand`,
+ * `randg` and the value grammar's nesting have nothing to describe here and are refused. Trailing
+ * dimensions may be left off, as they can be on `@workgroup_size` itself, so `// 16` is `16, 1, 1`.
  *
  * `noun` is what the dimensions are called in any complaint, so a texture is told its size is wrong
  * rather than its count.
@@ -45,8 +45,8 @@ export const matchDirectiveCounts = (
 ): DirectiveCounts => {
     const input = comment.trim();
     if (input === "") return { type: "error", error: "empty directive" };
-    if (/\brand\b/.test(input))
-        return { type: "error", error: `a ${noun} has to be fixed, so \`rand\` cannot set one` };
+    const random = input.match(/\b(randg?)\b/)?.[1];
+    if (random) return { type: "error", error: `a ${noun} has to be fixed, so \`${random}\` cannot set one` };
     if (/[^\w\s.,+-]/.test(input))
         return {
             type: "error",
