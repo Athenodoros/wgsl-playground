@@ -29,6 +29,7 @@ describe("work group counts", () => {
     it("rejects rand, since a count has to be fixed", () => {
         expect(counts("rand(1, 4)")).toMatch(/`rand` cannot set one/);
         expect(counts("8, rand(1, 4), 1")).toMatch(/`rand` cannot set one/);
+        expect(counts("randg(8, 1)")).toMatch(/`randg` cannot set one/);
     });
 
     it("rejects the value grammar's nesting and repetition, which describe nothing here", () => {

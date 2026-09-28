@@ -42,11 +42,20 @@ export const getDirectiveSource = (
 export type DirectiveMatch =
     { type: "values"; values: number[]; runtimeLength: number | null } | { type: "error"; error: string };
 
-const isSingleValue = (node: DirectiveNode): node is Extract<DirectiveNode, { type: "value" | "rand" }> =>
-    node.type === "value" || node.type === "rand";
+type SingleValue = Extract<DirectiveNode, { type: "value" | "rand" | "randg" }>;
 
-const evaluate = (node: Extract<DirectiveNode, { type: "value" | "rand" }>) =>
-    node.type === "value" ? node.value : Math.random() * (node.max - node.min) + node.min;
+const isSingleValue = (node: DirectiveNode): node is SingleValue =>
+    node.type === "value" || node.type === "rand" || node.type === "randg";
+
+/** A draw from the standard normal distribution, by the Box-Muller transform. */
+const gaussian = () => Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
+
+const evaluate = (node: SingleValue) =>
+    node.type === "value"
+        ? node.value
+        : node.type === "rand"
+          ? Math.random() * (node.max - node.min) + node.min
+          : node.mean + gaussian() * node.deviation;
 
 /**
  * Reads a directive comment and lays its values out over a type, in the order the buffer expects
@@ -62,7 +71,7 @@ export const matchDirective = (comment: string, shape: TypeShape): DirectiveMatc
     let error: string | null = null;
 
     /** One value fills everything below it, however deeply nested. */
-    const broadcast = (node: Extract<DirectiveNode, { type: "value" | "rand" }>, target: TypeShape): void => {
+    const broadcast = (node: SingleValue, target: TypeShape): void => {
         if (target.kind === "scalar") {
             values.push(evaluate(node));
             return;

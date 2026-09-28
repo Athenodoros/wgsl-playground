@@ -5,6 +5,7 @@
  *     item   := number "*" item        an array of that many elements
  *            |  "(" list ")"           a nested struct, vector, matrix or array
  *            |  "rand" "(" n "," n ")" a random value in a range
+ *            |  "randg" "(" n "," n ")" a random value from a normal distribution, by mean and deviation
  *            |  number
  *
  * Nesting is explicit: a group's parentheses mark a compound value, so `(1, 2, 3), (4, 5, 6)` is
@@ -14,12 +15,13 @@
 export type DirectiveNode =
     | { type: "value"; value: number }
     | { type: "rand"; min: number; max: number }
+    | { type: "randg"; mean: number; deviation: number }
     | { type: "group"; items: DirectiveNode[] }
     | { type: "repeat"; count: number; item: DirectiveNode };
 
-type Token = { type: "number"; value: number } | { type: "rand" | "(" | ")" | "," | "*" };
+type Token = { type: "number"; value: number } | { type: "rand" | "randg" | "(" | ")" | "," | "*" };
 
-const TOKEN_PATTERN = /\s*(?:(rand)|([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)|([(),*]))/y;
+const TOKEN_PATTERN = /\s*(?:(randg|rand)|([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)|([(),*]))/y;
 
 const tokenize = (input: string): Token[] | string => {
     const raw = input.trim();
@@ -38,7 +40,7 @@ const tokenize = (input: string): Token[] | string => {
             }\``;
 
         const [, rand, number, symbol] = match;
-        if (rand !== undefined) tokens.push({ type: "rand" });
+        if (rand !== undefined) tokens.push({ type: rand as "rand" | "randg" });
         else if (number !== undefined) tokens.push({ type: "number", value: Number(number) });
         else tokens.push({ type: symbol as "(" | ")" | "," | "*" });
     }
@@ -81,16 +83,21 @@ export const parseDirective = (
             return { type: "value", value: token.value };
         }
 
-        if (token.type === "rand") {
-            if (take()?.type !== "(") return "`rand` must be followed by `(min, max)`";
-            const min = take();
-            if (min?.type !== "number") return "`rand` needs a number for its minimum";
-            if (take()?.type !== ",") return "`rand` needs two arguments, separated by a comma";
-            const max = take();
-            if (max?.type !== "number") return "`rand` needs a number for its maximum";
-            if (take()?.type !== ")") return "`rand` takes exactly two arguments";
+        if (token.type === "rand" || token.type === "randg") {
+            const name = token.type;
+            const [first, second] = name === "rand" ? ["minimum", "maximum"] : ["mean", "deviation"];
 
-            return { type: "rand", min: min.value, max: max.value };
+            if (take()?.type !== "(") return `\`${name}\` must be followed by \`(${first}, ${second})\``;
+            const a = take();
+            if (a?.type !== "number") return `\`${name}\` needs a number for its ${first}`;
+            if (take()?.type !== ",") return `\`${name}\` needs two arguments, separated by a comma`;
+            const b = take();
+            if (b?.type !== "number") return `\`${name}\` needs a number for its ${second}`;
+            if (take()?.type !== ")") return `\`${name}\` takes exactly two arguments`;
+
+            return name === "rand"
+                ? { type: "rand", min: a.value, max: b.value }
+                : { type: "randg", mean: a.value, deviation: b.value };
         }
 
         if (token.type === "(") {
