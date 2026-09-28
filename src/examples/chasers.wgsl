@@ -7,8 +7,8 @@
 /// Three passes run every frame, in the order below: the trail fades, the chasers move and draw into
 /// it, and the trail is painted onto the canvas.
 ///
-/// The chasers start gathered around the middle of the canvas, and turn away from its edges when they
-/// get there.
+/// The chasers start gathered around the middle of the canvas, and turn back towards it as they near
+/// its edges.
 ///
 /// The settings can be edited while it runs - try a larger sensor, or a trail that lasts longer.
 
@@ -82,10 +82,19 @@ fn steer(@builtin(global_invocation_id) id: vec3<u32>) {
     } else if (right > ahead && right > left) {
         turn = random * 0.4 + 0.8;
     }
-    chaser.heading += turn * settings.turning * step_time();
+    chaser.heading += (turn + away_from_edges(chaser)) * settings.turning * step_time();
 
+    // Turning away from the edges keeps nearly every chaser off them, and one that reaches an edge
+    // anyway bounces off it rather than sliding along it.
     let moved = chaser.position + direction(chaser.heading) * settings.speed * step_time();
-    chaser.position = clamp(moved, vec2(0.0), vec2<f32>(f32(WIDTH), f32(HEIGHT)) - 1.0);
+    let far = vec2<f32>(f32(WIDTH), f32(HEIGHT)) - 1.0;
+    if (moved.x < 0.0 || moved.x > far.x) {
+        chaser.heading = -chaser.heading;
+    }
+    if (moved.y < 0.0 || moved.y > far.y) {
+        chaser.heading = radians(180.0) - chaser.heading;
+    }
+    chaser.position = clamp(moved, vec2(0.0), far);
 
     chasers[id.x] = chaser;
     trail[index(chaser.position)] = 1.0;
@@ -109,13 +118,34 @@ fn step_time() -> f32 {
     return min(delta_time, 0.1);
 }
 
+/// How hard a chaser near an edge turns back towards the middle, from nothing 30 pixels from the edge
+/// to a full turn at it. It acts on the heading rather than on what the chaser senses: a penalty on
+/// sensing only moves the border to wherever the penalty balances the trail, and chasers run along
+/// that line instead.
+fn away_from_edges(chaser: Chaser) -> f32 {
+    let far = vec2<f32>(f32(WIDTH), f32(HEIGHT)) - 1.0;
+    let position = chaser.position;
+    let nearest = min(min(position.x, position.y), min(far.x - position.x, far.y - position.y));
+    let closeness = clamp(1.0 - nearest / 30.0, 0.0, 1.0);
+
+    // The heading that points at the middle, and the shorter way round to it.
+    let towards = far / 2.0 - chaser.position;
+    let difference = atan2(towards.x, towards.y) - chaser.heading;
+    let shortest = atan2(sin(difference), cos(difference));
+
+    return sign(shortest) * closeness;
+}
+
 /// Where a point on the canvas is kept in the trail.
 fn index(point: vec2<f32>) -> u32 {
     return u32(point.y) * WIDTH + u32(point.x);
 }
 
-/// The average trail around a point ahead of a chaser, at an angle to its heading. Anywhere off the
-/// canvas counts heavily against a direction, which is what turns chasers back from the edges.
+/// The average trail around a point ahead of a chaser, at an angle to its heading.
+///
+/// Anywhere off the canvas counts against a direction, and more the further off it is, so that the
+/// sensor pointing furthest out is always the worst. Scored the same, every sensor of a chaser heading
+/// into an edge would tie, and a tie means carrying on.
 fn sense(chaser: Chaser, angle: f32) -> f32 {
     let centre = chaser.position + direction(chaser.heading + angle) * settings.sensor_distance;
     let size = settings.sensor_size;
@@ -124,8 +154,10 @@ fn sense(chaser: Chaser, angle: f32) -> f32 {
     for (var dx = -size; dx <= size; dx++) {
         for (var dy = -size; dy <= size; dy++) {
             let point = centre + vec2<f32>(f32(dx), f32(dy));
-            if (point.x < 0.0 || point.y < 0.0 || point.x >= f32(WIDTH) || point.y >= f32(HEIGHT)) {
-                total -= 10.0;
+            let far = vec2<f32>(f32(WIDTH), f32(HEIGHT)) - 1.0;
+            let outside = length(max(max(-point, point - far), vec2(0.0)));
+            if (outside > 0.0) {
+                total -= 10.0 * (1.0 + outside);
             } else {
                 total += trail[index(point)];
             }
