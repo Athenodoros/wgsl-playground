@@ -50,7 +50,7 @@ struct Chaser {
 @group(0) @binding(3) var<storage, read_write> frame: u32; /// 0
 @group(0) @binding(4) var canvas: texture_storage_2d<rgba8unorm, write>; /// WIDTH, HEIGHT
 /// Last, so that it sits just above the canvas in the bindings panel, for tuning while watching.
-@group(0) @binding(5) var<uniform> settings: Settings; /// 5, 30, 6, 1, 0.1
+@group(0) @binding(5) var<uniform> settings: Settings; /// 5, 50, 6, 1, 0.1
 
 const background = vec3<f32>(10.0 / 255, 9.0 / 255, 26.0 / 255);
 const foreground = vec3<f32>(224.0 / 255, 231.0 / 255, 255.0 / 255);
