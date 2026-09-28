@@ -232,17 +232,31 @@ describe("the chasers example", () => {
         expect([canvas.width, canvas.height]).toEqual([OUTPUT_CANVAS_WIDTH, OUTPUT_CANVAS_HEIGHT]);
     });
 
-    it("scatters the chasers over the middle of the canvas, heading every which way", () => {
+    it("gathers the chasers around the middle of the canvas, heading every which way", () => {
         const binding = parse(CHASERS).bindings.find((b) => b.name === "chasers");
         if (binding?.kind !== "buffer") throw new Error("chasers is not a buffer binding");
 
         const values = new Float32Array(binding.buffer);
         expect(values).toHaveLength(50000 * 4);
-        for (let index = 0; index < values.length; index += 4) {
-            const [x, y, heading] = values.subarray(index, index + 3);
-            expect(x >= 160 && x <= 480 && y >= 90 && y <= 270).toBe(true);
-            expect(heading >= 0 && heading <= 6.2832).toBe(true);
+
+        const column = (offset: number) => values.filter((_, index) => index % 4 === offset);
+        const spread = (samples: Float32Array) => {
+            const mean = samples.reduce((sum, value) => sum + value, 0) / samples.length;
+            const deviation = Math.sqrt(samples.reduce((sum, value) => sum + (value - mean) ** 2, 0) / samples.length);
+            return { mean, deviation };
+        };
+
+        // Normally distributed around the centre, a twelfth of the canvas' height either way.
+        for (const [samples, centre] of [
+            [column(0), OUTPUT_CANVAS_WIDTH / 2],
+            [column(1), OUTPUT_CANVAS_HEIGHT / 2],
+        ] as const) {
+            const { mean, deviation } = spread(samples);
+            expect(Math.abs(mean - centre)).toBeLessThan(1);
+            expect(Math.abs(deviation - OUTPUT_CANVAS_HEIGHT / 12)).toBeLessThan(1);
         }
+
+        expect(column(2).every((heading) => heading >= 0 && heading <= 6.2832)).toBe(true);
     });
 });
 

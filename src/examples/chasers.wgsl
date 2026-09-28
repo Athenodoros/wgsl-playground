@@ -7,7 +7,8 @@
 /// Three passes run every frame, in the order below: the trail fades, the chasers move and draw into
 /// it, and the trail is painted onto the canvas.
 ///
-/// The chasers start in the middle of the canvas, and turn away from its edges when they get there.
+/// The chasers start gathered around the middle of the canvas, and turn away from its edges when they
+/// get there.
 ///
 /// The settings can be edited while it runs - try a larger sensor, or a trail that lasts longer.
 
@@ -41,11 +42,11 @@ struct Chaser {
 }
 
 @group(0) @binding(0) var<uniform> delta_time: f32; /// playground-time
-@group(0) @binding(1) var<storage, read_write> chasers: array<Chaser, CHASERS>; /// ((rand(160, 480), rand(90, 270)), rand(0, 6.2832))
+@group(0) @binding(1) var<storage, read_write> chasers: array<Chaser, CHASERS>; /// ((randg(320, 30), randg(180, 30)), rand(0, 6.2832))
 @group(0) @binding(2) var<storage, read_write> trail: array<f32, WIDTH * HEIGHT>; /// 0
 @group(0) @binding(3) var canvas: texture_storage_2d<rgba8unorm, write>; /// WIDTH, HEIGHT
 /// Last, so that it sits just above the canvas in the bindings panel, for tuning while watching.
-@group(0) @binding(4) var<uniform> settings: Settings; /// 5, 50, 6, 1, 0.1
+@group(0) @binding(4) var<uniform> settings: Settings; /// 5, 60, 6, 1, 0.1
 
 const background = vec3<f32>(10.0 / 255, 9.0 / 255, 26.0 / 255);
 const foreground = vec3<f32>(224.0 / 255, 231.0 / 255, 255.0 / 255);
