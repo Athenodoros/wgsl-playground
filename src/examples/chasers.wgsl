@@ -41,11 +41,12 @@ struct Chaser {
 }
 
 @group(0) @binding(0) var<uniform> delta_time: f32; /// playground-time
-@group(0) @binding(1) var<uniform> settings: Settings; /// 5, 30, 6, 1, 0.1
-@group(0) @binding(2) var<storage, read_write> chasers: array<Chaser, CHASERS>; /// ((rand(0, 640), rand(0, 360)), rand(0, 6.2832))
-@group(0) @binding(3) var<storage, read_write> trail: array<f32, WIDTH * HEIGHT>; /// 0
-@group(0) @binding(4) var<storage, read_write> frame: u32; /// 0
-@group(0) @binding(5) var canvas: texture_storage_2d<rgba8unorm, write>; /// WIDTH, HEIGHT
+@group(0) @binding(1) var<storage, read_write> chasers: array<Chaser, CHASERS>; /// ((rand(0, 640), rand(0, 360)), rand(0, 6.2832))
+@group(0) @binding(2) var<storage, read_write> trail: array<f32, WIDTH * HEIGHT>; /// 0
+@group(0) @binding(3) var<storage, read_write> frame: u32; /// 0
+@group(0) @binding(4) var canvas: texture_storage_2d<rgba8unorm, write>; /// WIDTH, HEIGHT
+/// Last, so that it sits just above the canvas in the bindings panel, for tuning while watching.
+@group(0) @binding(5) var<uniform> settings: Settings; /// 5, 30, 6, 1, 0.1
 
 const background = vec3<f32>(10.0 / 255, 9.0 / 255, 26.0 / 255);
 const foreground = vec3<f32>(224.0 / 255, 231.0 / 255, 255.0 / 255);

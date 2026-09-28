@@ -216,11 +216,11 @@ describe("the chasers example", () => {
 
         expect(bindings.map((b) => [b.name, b.warning])).toEqual([
             ["delta_time", null],
-            ["settings", null],
             ["chasers", null],
             ["trail", null],
             ["frame", null],
             ["canvas", null],
+            ["settings", null],
         ]);
     });
 
