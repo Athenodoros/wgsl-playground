@@ -7,7 +7,7 @@
 /// Four passes run every frame, in the order below: the frame counter moves on, the trail fades, the
 /// chasers move and draw into it, and the trail is painted onto the canvas.
 ///
-/// The canvas wraps around at its edges, so a chaser that leaves one side comes back on the other.
+/// The chasers start in the middle of the canvas, and turn away from its edges when they get there.
 ///
 /// The settings can be edited while it runs - try a larger sensor, or a trail that lasts longer.
 
@@ -21,6 +21,10 @@ const WIDTH = 640u;
 const HEIGHT = 360u;
 const COLUMNS = WIDTH / 8u;
 const ROWS = HEIGHT / 8u;
+
+/// The most time a frame moves the simulation on by, in seconds. A frame that comes late - after a
+/// stall, or on coming back to the tab - is shortened to this rather than sending every chaser flying.
+const MAX_STEP = 0.1;
 
 struct Settings {
     /// How sharply a chaser turns, in radians per second.
@@ -41,7 +45,7 @@ struct Chaser {
 }
 
 @group(0) @binding(0) var<uniform> delta_time: f32; /// playground-time
-@group(0) @binding(1) var<storage, read_write> chasers: array<Chaser, CHASERS>; /// ((rand(0, 640), rand(0, 360)), rand(0, 6.2832))
+@group(0) @binding(1) var<storage, read_write> chasers: array<Chaser, CHASERS>; /// ((rand(160, 480), rand(90, 270)), rand(0, 6.2832))
 @group(0) @binding(2) var<storage, read_write> trail: array<f32, WIDTH * HEIGHT>; /// 0
 @group(0) @binding(3) var<storage, read_write> frame: u32; /// 0
 @group(0) @binding(4) var canvas: texture_storage_2d<rgba8unorm, write>; /// WIDTH, HEIGHT
@@ -62,7 +66,7 @@ fn tick() {
 @workgroup_size(8, 8)
 fn fade(@builtin(global_invocation_id) id: vec3<u32>) {
     let index = id.y * WIDTH + id.x;
-    let faded = trail[index] * pow(settings.persistence, delta_time);
+    let faded = trail[index] * pow(settings.persistence, step_time());
     trail[index] = select(faded, 0.0, faded < 0.001);
 }
 
@@ -89,9 +93,10 @@ fn steer(@builtin(global_invocation_id) id: vec3<u32>) {
     } else if (right > ahead && right > left) {
         turn = random * 0.4 + 0.8;
     }
-    chaser.heading += turn * settings.turning * delta_time;
+    chaser.heading += turn * settings.turning * step_time();
 
-    chaser.position = wrap(chaser.position + direction(chaser.heading) * settings.speed * delta_time);
+    let moved = chaser.position + direction(chaser.heading) * settings.speed * step_time();
+    chaser.position = clamp(moved, vec2(0.0), vec2<f32>(f32(WIDTH), f32(HEIGHT)) - 1.0);
 
     chasers[id.x] = chaser;
     trail[index(chaser.position)] = 1.0;
@@ -108,18 +113,17 @@ fn direction(heading: f32) -> vec2<f32> {
     return vec2<f32>(sin(heading), cos(heading));
 }
 
-/// A point brought back onto the canvas from wherever it has wandered off it.
-fn wrap(point: vec2<f32>) -> vec2<f32> {
-    let size = vec2<f32>(f32(WIDTH), f32(HEIGHT));
-    return point - floor(point / size) * size;
+fn step_time() -> f32 {
+    return min(delta_time, MAX_STEP);
 }
 
 /// Where a point on the canvas is kept in the trail.
 fn index(point: vec2<f32>) -> u32 {
-    return min(u32(point.y), HEIGHT - 1u) * WIDTH + min(u32(point.x), WIDTH - 1u);
+    return u32(point.y) * WIDTH + u32(point.x);
 }
 
-/// The average trail around a point ahead of a chaser, at an angle to its heading.
+/// The average trail around a point ahead of a chaser, at an angle to its heading. Anywhere off the
+/// canvas counts heavily against a direction, which is what turns chasers back from the edges.
 fn sense(chaser: Chaser, angle: f32) -> f32 {
     let centre = chaser.position + direction(chaser.heading + angle) * settings.sensor_distance;
     let size = settings.sensor_size;
@@ -127,7 +131,12 @@ fn sense(chaser: Chaser, angle: f32) -> f32 {
     var total = 0.0;
     for (var dx = -size; dx <= size; dx++) {
         for (var dy = -size; dy <= size; dy++) {
-            total += trail[index(wrap(centre + vec2<f32>(f32(dx), f32(dy))))];
+            let point = centre + vec2<f32>(f32(dx), f32(dy));
+            if (point.x < 0.0 || point.y < 0.0 || point.x >= f32(WIDTH) || point.y >= f32(HEIGHT)) {
+                total -= 10.0;
+            } else {
+                total += trail[index(point)];
+            }
         }
     }
 

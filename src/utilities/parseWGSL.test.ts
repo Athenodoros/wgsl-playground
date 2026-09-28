@@ -238,7 +238,7 @@ describe("the chasers example", () => {
         expect([canvas.width, canvas.height]).toEqual([OUTPUT_CANVAS_WIDTH, OUTPUT_CANVAS_HEIGHT]);
     });
 
-    it("scatters the chasers over the canvas, heading every which way", () => {
+    it("scatters the chasers over the middle of the canvas, heading every which way", () => {
         const binding = parse(CHASERS).bindings.find((b) => b.name === "chasers");
         if (binding?.kind !== "buffer") throw new Error("chasers is not a buffer binding");
 
@@ -246,7 +246,7 @@ describe("the chasers example", () => {
         expect(values).toHaveLength(50000 * 4);
         for (let index = 0; index < values.length; index += 4) {
             const [x, y, heading] = values.subarray(index, index + 3);
-            expect(x >= 0 && x <= OUTPUT_CANVAS_WIDTH && y >= 0 && y <= OUTPUT_CANVAS_HEIGHT).toBe(true);
+            expect(x >= 160 && x <= 480 && y >= 90 && y <= 270).toBe(true);
             expect(heading >= 0 && heading <= 6.2832).toBe(true);
         }
     });
