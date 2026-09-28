@@ -199,16 +199,11 @@ fn step() { }
 describe("the chasers example", () => {
     const CHASERS = chasers.replace(/\/\/\//g, "//");
 
-    it("loops through its four passes, in order", () => {
+    it("loops through its three passes, in order", () => {
         const { target, loop } = parse(CHASERS);
 
         expect(loop).toBe(true);
-        expect(target.type === "compute" && target.passes.map((pass) => pass.name)).toEqual([
-            "tick",
-            "fade",
-            "steer",
-            "draw",
-        ]);
+        expect(target.type === "compute" && target.passes.map((pass) => pass.name)).toEqual(["fade", "steer", "draw"]);
     });
 
     it("reads every binding's directive without a warning", () => {
@@ -218,7 +213,6 @@ describe("the chasers example", () => {
             ["delta_time", null],
             ["chasers", null],
             ["trail", null],
-            ["frame", null],
             ["canvas", null],
             ["settings", null],
         ]);
