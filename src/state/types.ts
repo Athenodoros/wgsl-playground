@@ -7,6 +7,11 @@ interface OutputDisplayState {
      * buffer is left out of what a run reads back, and only its length is shown.
      */
     renderedOutputs: string[];
+    /**
+     * How many times a shader has asked for the panels about its code to be collapsed. The panels
+     * collapse whenever it goes up, and are the user's to open again after that.
+     */
+    collapseRequests: number;
 }
 
 interface AppLoadingState extends ParseResults, PlaybackState, OutputDisplayState {

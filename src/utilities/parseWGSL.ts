@@ -1,6 +1,13 @@
 import { ResourceType, VariableInfo, WgslReflect } from "wgsl_reflect";
 import { OUTPUT_CANVAS_HEIGHT, OUTPUT_CANVAS_WIDTH } from "./canvas";
-import { getDirectiveSource, getRunCounts, getRunOrder, hasTimeMarker, TIME_MARKER_WARNING } from "./directives";
+import {
+    getDirectiveSource,
+    getRunCounts,
+    getRunOrder,
+    hasCollapseSections,
+    hasTimeMarker,
+    TIME_MARKER_WARNING,
+} from "./directives";
 import { getDefaultTarget } from "./runTarget";
 import { getStorageTextureSupport } from "./storageTextures";
 import { ParseResults, Runnable, RunnableFunction, WgslBinding, WgslTextureBinding } from "./types";
@@ -124,6 +131,7 @@ export const parseWGSL = (
         bindings: bindings as WgslBinding[],
         runnables,
         runOrder,
+        collapseSections: hasCollapseSections(wgsl),
         target: getDefaultTarget(runnables, runOrder),
         loop: hasTimeUniform(bindings as WgslBinding[]),
     };

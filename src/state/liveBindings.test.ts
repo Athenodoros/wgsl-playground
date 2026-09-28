@@ -60,6 +60,7 @@ const running = ({ loop = true, playing = true } = {}) => {
         playing,
         clock: STOPPED_CLOCK,
         renderedOutputs: [],
+        collapseRequests: 0,
     };
     const set = ((update: Partial<AppState>, replace?: boolean) => {
         state = (replace ? update : { ...state, ...update }) as AppState;

@@ -152,6 +152,8 @@ export interface ParseResults {
      * told from an edit anywhere else, and so a name that matches nothing can still be reported.
      */
     runOrder: string[] | null;
+    /** Whether the shader asks for the panels about its code to start collapsed. */
+    collapseSections: boolean;
     runnables: Runnable[];
     bindings: WgslBinding[];
     structs: StructInfo[];

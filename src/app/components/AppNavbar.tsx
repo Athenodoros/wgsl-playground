@@ -182,6 +182,22 @@ fn draw() { }`}</code>
                         </section>
 
                         <section>
+                            <h3 className="font-semibold mb-2">Collapsing the panels</h3>
+                            <p className="mb-3">
+                                A shader that is mostly a picture can ask for the Struct Layouts, Resource Binding
+                                Values and Function Runner panels to start collapsed, leaving room for its outputs,
+                                with a comment on a line of its own:
+                            </p>
+                            <pre className="bg-slate-100 rounded p-3 overflow-x-auto text-xs">
+                                <code>{`// playground-collapse-sections`}</code>
+                            </pre>
+                            <p className="mt-3">
+                                They collapse when the shader is opened, and when the comment is first written. After
+                                that they are yours to open, and stay open as you edit.
+                            </p>
+                        </section>
+
+                        <section>
                             <h3 className="font-semibold mb-2">Running in a loop</h3>
                             <p className="mb-3">
                                 Tick <strong>Run in loop</strong> under the Run Target to run a compute or render target
