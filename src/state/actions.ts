@@ -53,7 +53,7 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
             return;
         }
 
-        const result = parseWGSL(wgsl);
+        const result = parseWGSL(wgsl, state.bindings);
         if (result.type === "failed-parse") {
             set({ ...state, ...result, wgsl }, true);
             return;
@@ -290,36 +290,6 @@ const updateParseResultsFromPrevious = (
     state: AppFailedParseState | AppRunningState | AppFinishedState,
     source: CodeSource,
 ) => {
-    for (const binding of result.bindings) {
-        const oldBinding =
-            state.bindings.find((b) => b.id === binding.id) ?? state.bindings.find((b) => b.name === binding.name);
-        if (oldBinding === undefined) continue;
-
-        // A storage texture has no value to carry across: everything about it, size included, comes
-        // from the code that was just re-read.
-        if (binding.kind !== "buffer" || oldBinding.kind !== "buffer") continue;
-
-        // Values the user set by hand are kept across an edit, but only while both the binding's
-        // shape and the directive comment behind it are unchanged. Comparing generated values alone
-        // is not enough: getDefaultValue() here takes no directive, so every binding compares equal
-        // as all 1s and an edited comment is silently discarded. The comment cannot be compared by
-        // the values it produces either, since `rand` gives different ones every time.
-        const newDefault = binding.type.getDefaultValue();
-        const oldDefault = oldBinding.type.getDefaultValue();
-        // A binding the playground keeps the time in has nothing the user set to keep, and one that has
-        // just stopped being that should not start from the zero it held.
-        if (
-            newDefault.type === "values" &&
-            oldDefault.type === "values" &&
-            newDefault.value === oldDefault.value &&
-            binding.directive === oldBinding.directive &&
-            binding.time === oldBinding.time
-        ) {
-            binding.input = oldBinding.input;
-            binding.buffer = oldBinding.buffer;
-        }
-    }
-
     // Whether to loop is the user's call, and an edit elsewhere is no reason to undo it. Adding or
     // taking away the time uniform changes what the shader is for, though, so the default comes back
     // then - as it does for an example, which is a new file rather than an edit to this one.
