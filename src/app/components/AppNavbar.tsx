@@ -187,6 +187,13 @@ fn draw() { }`}</code>
                                 throws that away and starts again from the binding values.
                             </p>
                             <p className="mb-3">
+                                Editing a <code>var&lt;uniform&gt;</code> or <code>var&lt;storage, read&gt;</code>{" "}
+                                binding while the loop runs writes the new value straight into it, without starting
+                                over, so a simulation can be tuned as it runs. The shader cannot write to those, so
+                                there is nothing for the edit to throw away. Editing a binding the shader writes to,
+                                or giving an array a new length, starts the loop again.
+                            </p>
+                            <p className="mb-3">
                                 Mark an <code>f32</code> uniform with this comment to have the playground fill it with
                                 the seconds since the last frame:
                             </p>
