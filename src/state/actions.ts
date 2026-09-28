@@ -193,8 +193,21 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
             const bindings = state.bindings.map((b) =>
                 b.id === id && b.kind === "buffer" ? { ...b, input, buffer } : b,
             );
-            if (state.type === "failed-parse") set({ ...state, bindings }, true);
-            else startGPUProcessing({ ...state, type: "running", bindings });
+            if (state.type === "failed-parse") {
+                set({ ...state, bindings }, true);
+                return;
+            }
+
+            // A binding the shader cannot write holds nothing a loop has built up, so a running loop
+            // takes its new value where it is instead of starting over - which is what lets a
+            // simulation be tuned as it runs. A value of a new size needs a new buffer, and so a new
+            // start. A single run is cheap to run again, and has to be for the new value to show.
+            if (activeLoop !== null && !binding.writable && activeSession?.writeBinding(id, buffer)) {
+                set({ bindings });
+                return;
+            }
+
+            startGPUProcessing({ ...state, type: "running", bindings });
         },
         setRunTarget: (target) => {
             const state = get();

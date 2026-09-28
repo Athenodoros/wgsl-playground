@@ -68,6 +68,11 @@ export interface RunSession {
      * It is how a buffer too big to follow along with is still got at, when someone asks for it.
      */
     readBinding: (id: string) => Promise<string>;
+    /**
+     * Writes a new value into one buffer binding, for the next frame to read. Returns false, writing
+     * nothing, when the value is not the size of the buffer the session built: that takes a new one.
+     */
+    writeBinding: (id: string, value: ArrayBuffer) => boolean;
     destroy: () => void;
 }
 
@@ -104,6 +109,20 @@ const readSessionBinding = (
         return Promise.reject(new Error(`No buffer binding ${id} to read`));
 
     return readBufferValue(device, buffers[id], binding.type);
+};
+
+/** Writes one of a session's buffers, for `RunSession.writeBinding`. */
+const writeSessionBinding = (
+    device: GPUDevice,
+    buffers: Record<string, GPUBuffer>,
+    id: string,
+    value: ArrayBuffer,
+): boolean => {
+    const buffer = buffers[id];
+    if (buffer === undefined || buffer.size !== value.byteLength) return false;
+
+    device.queue.writeBuffer(buffer, 0, value);
+    return true;
 };
 
 const assertSupportedBindings = (bindings: WgslBinding[]) => {
@@ -310,6 +329,7 @@ const createRenderSession = (
             return collectResults(wgsl, module, scopes.caught(), [], null, await texture);
         },
         readBinding: (id) => readSessionBinding(device, bindings, resources.buffers, id),
+        writeBinding: (id, value) => scopes.run(() => writeSessionBinding(device, resources.buffers, id, value))[0],
         destroy: () => {
             depthTexture?.destroy();
             destroyResources(resources);
@@ -389,6 +409,7 @@ const createComputeSession = (
             return collectResults(wgsl, module, scopes.caught(), await values, null, await texture);
         },
         readBinding: (id) => readSessionBinding(device, bindings, resources.buffers, id),
+        writeBinding: (id, value) => scopes.run(() => writeSessionBinding(device, resources.buffers, id, value))[0],
         destroy: () => destroyResources(resources),
     };
 };
