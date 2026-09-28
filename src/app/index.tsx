@@ -20,9 +20,16 @@ export const App = () => {
         <div className="h-screen w-screen bg-slate-50 flex flex-col">
             <OverlaysProvider>
                 <AppNavbar />
-                <div className="flex p-4 gap-4 items-stretch h-screen pt-16.5">
-                    <WGSLEditor />
-                    <div className="w-2xl flex flex-col gap-4 overflow-y-auto -m-px p-px">
+                {/* The space around the two columns belongs to them rather than to this row, so that the
+                    right column scrolls from anywhere near it - above, below, to its right, and most of the
+                    way across the gap to the editor - not only from over the sections themselves. */}
+                <div className="flex items-stretch h-screen pt-12.5">
+                    <div className="flex basis-md grow min-w-0 py-4 pl-4 pr-[0.2rem]">
+                        <WGSLEditor />
+                    </div>
+                    {/* The sections keep the width they had when the column was 2xl wide with a pixel inset each
+                        side, and the padding splits the gap to the editor four to one in this column's favour. */}
+                    <div className="w-[calc(var(--container-2xl)-2px+1.8rem)] shrink-0 flex flex-col gap-4 overflow-y-auto py-4 pl-[0.8rem] pr-4">
                         <StructDisplay />
                         <BindingsDisplay />
                         {/* A running loop can still be paused or reset with this section closed, from its header. */}
