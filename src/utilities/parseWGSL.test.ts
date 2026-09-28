@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import interferencePattern from "../examples/interference_pattern.wgsl";
-import travellingWaves from "../examples/travelling_waves.wgsl";
+import chasers from "../examples/chasers.wgsl";
 import { OUTPUT_CANVAS_HEIGHT, OUTPUT_CANVAS_WIDTH } from "./canvas";
 import { parseWGSL } from "./parseWGSL";
 import { WgslBinding } from "./types";
@@ -196,20 +196,67 @@ fn step() { }
     });
 });
 
-describe("the travelling waves example", () => {
-    const WAVES = travellingWaves.replace(/\/\/\//g, "//");
+describe("the chasers example", () => {
+    const CHASERS = chasers.replace(/\/\/\//g, "//");
 
-    it("loops, moving its own clock on before drawing by it", () => {
-        const { bindings, target, loop } = parse(WAVES);
+    it("loops through its three passes, in order", () => {
+        const { target, loop } = parse(CHASERS);
 
         expect(loop).toBe(true);
-        expect(target.type === "compute" && target.passes.map((pass) => pass.name)).toEqual(["tick", "draw"]);
-        expect(bindings.map((b) => [b.name, b.kind === "buffer" && b.time, b.warning])).toEqual([
-            ["delta_time", true, null],
-            ["elapsed", false, null],
-            ["sources", false, null],
-            ["field", false, null],
+        expect(target.type === "compute" && target.passes.map((pass) => pass.name)).toEqual(["fade", "steer", "draw"]);
+    });
+
+    it("reads every binding's directive without a warning", () => {
+        const { bindings } = parse(CHASERS);
+
+        expect(bindings.map((b) => [b.name, b.warning])).toEqual([
+            ["delta_time", null],
+            ["chasers", null],
+            ["trail", null],
+            ["canvas", null],
+            ["settings", null],
         ]);
+    });
+
+    it("sizes its dispatches and canvas from its consts, covering every chaser and pixel", () => {
+        const { target, bindings } = parse(CHASERS);
+        const passes = target.type === "compute" ? target.passes : [];
+        const threads = (name: string) => passes.find((pass) => pass.name === name)?.threads;
+
+        expect(threads("steer")).toEqual([782, 1, 1]);
+        expect(782 * 64).toBeGreaterThanOrEqual(50000);
+        expect(threads("fade")).toEqual([80, 45, 1]);
+        expect(threads("draw")).toEqual([80, 45, 1]);
+
+        const canvas = texture(bindings, "canvas");
+        expect([canvas.width, canvas.height]).toEqual([OUTPUT_CANVAS_WIDTH, OUTPUT_CANVAS_HEIGHT]);
+    });
+
+    it("gathers the chasers around the middle of the canvas, heading every which way", () => {
+        const binding = parse(CHASERS).bindings.find((b) => b.name === "chasers");
+        if (binding?.kind !== "buffer") throw new Error("chasers is not a buffer binding");
+
+        const values = new Float32Array(binding.buffer);
+        expect(values).toHaveLength(50000 * 4);
+
+        const column = (offset: number) => values.filter((_, index) => index % 4 === offset);
+        const spread = (samples: Float32Array) => {
+            const mean = samples.reduce((sum, value) => sum + value, 0) / samples.length;
+            const deviation = Math.sqrt(samples.reduce((sum, value) => sum + (value - mean) ** 2, 0) / samples.length);
+            return { mean, deviation };
+        };
+
+        // Normally distributed around the centre, a twelfth of the canvas' height either way.
+        for (const [samples, centre] of [
+            [column(0), OUTPUT_CANVAS_WIDTH / 2],
+            [column(1), OUTPUT_CANVAS_HEIGHT / 2],
+        ] as const) {
+            const { mean, deviation } = spread(samples);
+            expect(Math.abs(mean - centre)).toBeLessThan(1);
+            expect(Math.abs(deviation - OUTPUT_CANVAS_HEIGHT / 12)).toBeLessThan(1);
+        }
+
+        expect(column(2).every((heading) => heading >= 0 && heading <= 6.2832)).toBe(true);
     });
 });
 
