@@ -1,19 +1,11 @@
-import {
-    Button,
-    ButtonGroup,
-    Callout,
-    Checkbox,
-    NumericInput,
-    NumericInputProps,
-    SectionCard,
-    Tooltip,
-} from "@blueprintjs/core";
+import { Callout, Checkbox, NumericInput, NumericInputProps, SectionCard } from "@blueprintjs/core";
 import React, { useCallback } from "react";
 import { useAppState } from "../../../state";
 import { resolveRunOrder, targetRunnables, updateRunnable } from "../../../utilities/runTarget";
 import { Runnable, RunnableFunctionArgument } from "../../../utilities/types";
 import { useVariableDisplayProps } from "../../shared/useVariableDisplayProps";
 import { VariableDisplay } from "../../shared/VariableDisplay";
+import { PlaybackButtons } from "./PlaybackButtons";
 import { RunnableKinds } from "./RunnableKinds";
 import { RunnableSelect } from "./RunnableSelect";
 
@@ -75,17 +67,8 @@ export const RunnableInputs: React.FC = () => {
 const LoopControls: React.FC = () => {
     const loopable = useAppState((state) => state.target.type === "compute" || state.target.type === "render");
     const loop = useAppState((state) => state.loop);
-    const playing = useAppState((state) => state.playing);
     const clock = useAppState((state) => state.clock);
     const setLoop = useAppState((state) => state.setLoop);
-    const play = useAppState((state) => state.play);
-    const pause = useAppState((state) => state.pause);
-    const reset = useAppState((state) => state.reset);
-
-    // An error stays with the run it came from, so playing on would only stop again at once.
-    const halted = useAppState(
-        (state) => !state.playing && state.type === "finished" && state.results.type === "errors",
-    );
 
     if (!loopable) return null;
 
@@ -94,26 +77,7 @@ const LoopControls: React.FC = () => {
         <div className="flex justify-between items-center gap-2 h-6">
             {loop ? (
                 <div className="flex items-center gap-2">
-                    <ButtonGroup size="small" variant="outlined">
-                        <Tooltip
-                            content="Stopped on an error - reset to run again"
-                            position="bottom"
-                            disabled={!halted}
-                        >
-                            <Button
-                                icon={playing ? "pause" : "play"}
-                                intent="primary"
-                                onClick={playing ? pause : play}
-                                title={halted ? undefined : playing ? "Pause" : "Play"}
-                                aria-label={playing ? "Pause" : "Play"}
-                                disabled={halted}
-                                // A disabled button gets no pointer events, which would leave the tooltip
-                                // around it nothing to open on.
-                                className={halted ? "pointer-events-none" : undefined}
-                            />
-                        </Tooltip>
-                        <Button icon="reset" onClick={reset} title="Reset" aria-label="Reset" />
-                    </ButtonGroup>
+                    <PlaybackButtons />
                     <p className="!mb-0 text-xs text-slate-400 tabular-nums">
                         {clock.elapsed.toFixed(2)}s, frame {clock.frames}
                     </p>

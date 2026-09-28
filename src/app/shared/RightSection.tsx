@@ -8,6 +8,8 @@ interface RightSectionProps {
     disabled?: boolean;
     /** Keeps the contents mounted while collapsed, for anything that would lose its state on unmount. */
     keepChildrenMounted?: boolean;
+    /** Shown in the header, beside the collapse caret, while the section is collapsed. */
+    collapsedHeaderElement?: ReactNode;
     children?: ReactNode | undefined;
 }
 export const RightSection: React.FC<RightSectionProps> = ({
@@ -17,6 +19,7 @@ export const RightSection: React.FC<RightSectionProps> = ({
     children,
     startClosed,
     keepChildrenMounted,
+    collapsedHeaderElement,
 }) => {
     const [isOpen, setIsOpen] = useState(!startClosed);
 
@@ -30,6 +33,16 @@ export const RightSection: React.FC<RightSectionProps> = ({
             collapsible={!disabled}
             collapseProps={{ isOpen, onToggle: () => setIsOpen(!isOpen), keepChildrenMounted }}
             icon={icon}
+            rightElement={
+                !isOpen && collapsedHeaderElement ? (
+                    // Clicking the header toggles the section, so a click anywhere in this padding is
+                    // caught before it can - a near miss on a button does nothing, rather than open the
+                    // section out from under the pointer.
+                    <div className="-my-2 py-2 px-3 cursor-default" onClick={(event) => event.stopPropagation()}>
+                        {collapsedHeaderElement}
+                    </div>
+                ) : undefined
+            }
         >
             {disabled ? null : children}
         </Section>
