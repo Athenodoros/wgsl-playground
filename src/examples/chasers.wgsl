@@ -7,7 +7,7 @@
 /// Three passes run every frame, in the order below: the trail fades, the chasers move and draw into
 /// it, and the trail is painted onto the canvas.
 ///
-/// The chasers start gathered around the middle of the canvas, and turn away from its edges when they
+/// The chasers start gathered around the middle of the canvas, and bounce off its edges when they
 /// get there.
 ///
 /// The settings can be edited while it runs - try a larger sensor, or a trail that lasts longer.
@@ -84,8 +84,17 @@ fn steer(@builtin(global_invocation_id) id: vec3<u32>) {
     }
     chaser.heading += turn * settings.turning * step_time();
 
+    // A chaser that reaches an edge bounces off it. Pressed against one instead, it would find the trail
+    // off the canvas equally bad in every direction, carry on into it, and slide along it for good.
     let moved = chaser.position + direction(chaser.heading) * settings.speed * step_time();
-    chaser.position = clamp(moved, vec2(0.0), vec2<f32>(f32(WIDTH), f32(HEIGHT)) - 1.0);
+    let far = vec2<f32>(f32(WIDTH), f32(HEIGHT)) - 1.0;
+    if (moved.x < 0.0 || moved.x > far.x) {
+        chaser.heading = -chaser.heading;
+    }
+    if (moved.y < 0.0 || moved.y > far.y) {
+        chaser.heading = radians(180.0) - chaser.heading;
+    }
+    chaser.position = clamp(moved, vec2(0.0), far);
 
     chasers[id.x] = chaser;
     trail[index(chaser.position)] = 1.0;
