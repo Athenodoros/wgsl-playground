@@ -1,10 +1,10 @@
 import { Button, IconName, Menu, MenuItem, PopoverNext, Section } from "@blueprintjs/core";
 import { Editor } from "@monaco-editor/react";
 import { useState } from "react";
+import chasers from "../../examples/chasers.wgsl";
 import defaultComputeShader from "../../examples/default_compute_shader.wgsl";
 import defaultVertexShader from "../../examples/default_vertex_shader.wgsl";
 import interferencePattern from "../../examples/interference_pattern.wgsl";
-import travellingWaves from "../../examples/travelling_waves.wgsl";
 import { useAppState } from "../../state";
 import { INITIAL_APP_STATE } from "../../state/defaults";
 import { noop } from "../../utilities/data";
@@ -18,7 +18,7 @@ const EXAMPLES: { icon: IconName; text: string; wgsl: string }[] = [
     { icon: "media", text: "Triangle Vertex Shader", wgsl: unmangleComments(defaultVertexShader) },
     { icon: "derive-column", text: "CumSum Compute Shader", wgsl: unmangleComments(defaultComputeShader) },
     { icon: "heatmap", text: "Interference Pattern", wgsl: unmangleComments(interferencePattern) },
-    { icon: "play", text: "Travelling Waves", wgsl: unmangleComments(travellingWaves) },
+    { icon: "flows", text: "Chasers", wgsl: unmangleComments(chasers) },
 ];
 
 export const WGSLEditor: React.FC = () => {
