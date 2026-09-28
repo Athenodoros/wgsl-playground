@@ -22,10 +22,6 @@ const HEIGHT = 360u;
 const COLUMNS = WIDTH / 8u;
 const ROWS = HEIGHT / 8u;
 
-/// The most time a frame moves the simulation on by, in seconds. A frame that comes late - after a
-/// stall, or on coming back to the tab - is shortened to this rather than sending every chaser flying.
-const MAX_STEP = 0.1;
-
 struct Settings {
     /// How sharply a chaser turns, in radians per second.
     turning: f32,
@@ -105,8 +101,11 @@ fn direction(heading: f32) -> vec2<f32> {
     return vec2<f32>(sin(heading), cos(heading));
 }
 
+/// The time a frame moves the simulation on by, which is at most a tenth of a second. A frame that
+/// comes late - after a stall, or on coming back to the tab - is cut short rather than sending the
+/// chasers flying.
 fn step_time() -> f32 {
-    return min(delta_time, MAX_STEP);
+    return min(delta_time, 0.1);
 }
 
 /// Where a point on the canvas is kept in the trail.
