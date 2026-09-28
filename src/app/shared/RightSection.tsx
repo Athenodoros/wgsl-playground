@@ -1,5 +1,6 @@
 import { IconName, Section } from "@blueprintjs/core";
 import React, { ReactNode, useState } from "react";
+import { useAppState } from "../../state";
 
 interface RightSectionProps {
     title: string;
@@ -10,6 +11,8 @@ interface RightSectionProps {
     keepChildrenMounted?: boolean;
     /** Shown in the header, beside the collapse caret, while the section is collapsed. */
     collapsedHeaderElement?: ReactNode;
+    /** Collapses whenever the shader asks with `playground-collapse-sections`. */
+    followsCollapseComment?: boolean;
     children?: ReactNode | undefined;
 }
 export const RightSection: React.FC<RightSectionProps> = ({
@@ -20,8 +23,17 @@ export const RightSection: React.FC<RightSectionProps> = ({
     startClosed,
     keepChildrenMounted,
     collapsedHeaderElement,
+    followsCollapseComment,
 }) => {
     const [isOpen, setIsOpen] = useState(!startClosed);
+
+    // Each request closes the section once, and it is the user's to open again after that.
+    const collapseRequests = useAppState((state) => state.collapseRequests);
+    const [seenRequests, setSeenRequests] = useState(collapseRequests);
+    if (collapseRequests !== seenRequests) {
+        setSeenRequests(collapseRequests);
+        if (followsCollapseComment) setIsOpen(false);
+    }
 
     return (
         <Section

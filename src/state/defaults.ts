@@ -18,4 +18,5 @@ export const INITIAL_APP_STATE: AppState = {
     playing: true,
     clock: STOPPED_CLOCK,
     renderedOutputs: [],
+    collapseRequests: 0,
 };

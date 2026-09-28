@@ -74,6 +74,11 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
             wgsl,
             playing: source === "example" || state.playing,
             renderedOutputs: source === "example" ? [] : state.renderedOutputs,
+            // A shader asks for its panels to be collapsed when it is opened, or when the comment is
+            // first written - not on every edit after, which would close whatever the user opened.
+            collapseRequests:
+                state.collapseRequests +
+                (result.collapseSections && (source === "example" || !state.collapseSections) ? 1 : 0),
         });
     };
 
@@ -146,7 +151,7 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
 
             const result = parseWGSL(state.wgsl);
             if (result.type === "failed-parse") set({ ...state, ...result, device, canvas: state.canvas }, true);
-            else startGPUProcessing({ ...state, ...result, device, canvas: state.canvas });
+            else startGPUProcessing({ ...state, ...result, ...firstParse(state, result), device, canvas: state.canvas });
         },
         setCanvas: (canvas: HTMLCanvasElement | null) => {
             if (canvas === null) return;
@@ -167,7 +172,7 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
 
             const result = parseWGSL(state.wgsl);
             if (result.type === "failed-parse") set({ ...state, ...result, canvas, device: state.device }, true);
-            else startGPUProcessing({ ...state, ...result, canvas, device: state.device });
+            else startGPUProcessing({ ...state, ...result, ...firstParse(state, result), canvas, device: state.device });
         },
         setWGSL: (wgsl: string | undefined) => {
             if (wgsl !== undefined) applyWGSL(wgsl, "edit");
@@ -281,6 +286,11 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
                 : activeSession.readBinding(id),
     };
 };
+
+/** What the first parse of the code the app opened with asks for, beyond the parse itself. */
+const firstParse = (state: AppState, result: ParseResults) => ({
+    collapseRequests: state.collapseRequests + (result.collapseSections ? 1 : 0),
+});
 
 /** Where new code came from: typed into the file that is open, or loaded in place of it. */
 type CodeSource = "edit" | "example";

@@ -30,6 +30,7 @@ export const App = () => {
                             title="Function Runner"
                             icon="flow-end"
                             collapsedHeaderElement={looping ? <PlaybackButtons /> : undefined}
+                            followsCollapseComment
                         >
                             <RunnableInputs />
                         </RightSection>

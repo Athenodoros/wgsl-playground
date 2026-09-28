@@ -10,6 +10,7 @@ export const StructDisplay: React.FC = () => {
 
     return (
         <RightSection
+            followsCollapseComment
             title={`Struct Layouts (${structs.length})`}
             icon="curly-braces"
             disabled={structs.length === 0}

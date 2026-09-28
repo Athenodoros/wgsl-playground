@@ -13,6 +13,7 @@
 /// The settings can be edited while it runs - try a larger sensor, or a trail that lasts longer.
 
 /// playground-compute-run-order: fade, steer, draw
+/// playground-collapse-sections
 
 const CHASERS = 50000u;
 const THREADS = 64u;

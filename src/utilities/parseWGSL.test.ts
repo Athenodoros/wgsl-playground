@@ -199,6 +199,11 @@ fn step() { }
 describe("the chasers example", () => {
     const CHASERS = chasers.replace(/\/\/\//g, "//");
 
+    it("asks for the panels about its code to start collapsed, leaving room for the canvas", () => {
+        expect(parse(CHASERS).collapseSections).toBe(true);
+        expect(parse(EXAMPLE).collapseSections).toBe(false);
+    });
+
     it("loops through its three passes, in order", () => {
         const { target, loop } = parse(CHASERS);
 

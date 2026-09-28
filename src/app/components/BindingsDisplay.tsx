@@ -21,6 +21,7 @@ export const BindingsDisplay: React.FC = () => {
 
     return (
         <RightSection
+            followsCollapseComment
             title={`Resource Binding Values (${bindings.length})`}
             icon="property"
             disabled={bindings.length === 0}

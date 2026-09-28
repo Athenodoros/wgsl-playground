@@ -41,6 +41,7 @@ const storeShowing = (wgsl: string, results?: RunnerResults) => {
         playing: true,
         clock: STOPPED_CLOCK,
         renderedOutputs: [] as string[],
+        collapseRequests: 0,
     };
     let state: AppState = results ? { ...common, type: "finished", results } : { ...common, type: "running" };
 
@@ -247,5 +248,38 @@ fn fill() {}
         store.actions.loadExample(LARGE_SHADER + "\n// an example\n");
 
         expect(store.getState().renderedOutputs).toEqual([]);
+    });
+});
+
+describe("collapsing the panels", () => {
+    const COLLAPSING = `// playground-collapse-sections\n${RENDER_SHADER}`;
+
+    it("collapses them when an example asks, every time one is opened", () => {
+        const store = storeShowing(RENDER_SHADER, DREW_SOMETHING);
+
+        store.actions.loadExample(COLLAPSING);
+        expect(store.getState().collapseRequests).toBe(1);
+
+        store.actions.loadExample(COLLAPSING + "\n// the same example, opened again\n");
+        expect(store.getState().collapseRequests).toBe(2);
+    });
+
+    it("collapses them when the comment is first written, but not on every edit after", () => {
+        const store = storeShowing(RENDER_SHADER, DREW_SOMETHING);
+
+        store.actions.setWGSL(COLLAPSING);
+        expect(store.getState().collapseRequests).toBe(1);
+
+        store.actions.setWGSL(COLLAPSING + "\n// an edit elsewhere\n");
+        expect(store.getState().collapseRequests).toBe(1);
+    });
+
+    it("leaves them alone for code that does not ask", () => {
+        const store = storeShowing(RENDER_SHADER, DREW_SOMETHING);
+
+        store.actions.loadExample(RENDER_SHADER + "\n// an example that does not ask\n");
+        store.actions.setWGSL(RENDER_SHADER + "\n// an edit\n");
+
+        expect(store.getState().collapseRequests).toBe(0);
     });
 });
