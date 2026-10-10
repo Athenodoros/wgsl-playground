@@ -330,17 +330,17 @@ const getBufferFromStringForType = (type: TypeInfo, structs: StructInfo[], value
 
     for (const idx of range(components.length)) {
         const component = components[idx];
-        const value = values[idx];
-        if (value === null) {
+        const componentValue = values[idx];
+        if (componentValue === null) {
             if (component === "padding") continue;
 
             // console.log(`Could not parse value for ${JSON.stringify(type)}: unexpected null at index ${idx}`);
             return null;
         }
 
-        if (component === "f32") view.setFloat32(idx * 4, value, true);
-        if (component === "u32") view.setUint32(idx * 4, value, true);
-        if (component === "i32") view.setInt32(idx * 4, value, true);
+        if (component === "f32") view.setFloat32(idx * 4, componentValue, true);
+        if (component === "u32") view.setUint32(idx * 4, componentValue, true);
+        if (component === "i32") view.setInt32(idx * 4, componentValue, true);
     }
 
     return buffer;

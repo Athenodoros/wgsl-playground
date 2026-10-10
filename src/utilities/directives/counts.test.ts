@@ -82,42 +82,42 @@ const CORNER = vec2(1, 2);
 override TUNED = 7u;
 fn step() { const LOCAL = 4u; }
 `;
-    const counts = (comment: string, dimensions = 3) => {
+    const shaderCounts = (comment: string, dimensions = 3) => {
         const result = matchDirectiveCounts(comment, dimensions, "count", SHADER);
         return result.type === "error" ? `ERROR: ${result.error}` : result.counts;
     };
 
     it("reads consts alongside numbers", () => {
-        expect(counts("CHASERS")).toEqual([20000]);
-        expect(counts("THREADS, 2, 1")).toEqual([64, 2, 1]);
+        expect(shaderCounts("CHASERS")).toEqual([20000]);
+        expect(shaderCounts("THREADS, 2, 1")).toEqual([64, 2, 1]);
     });
 
     it("takes a const's value as the shader works it out, dividing as WGSL does", () => {
-        expect(counts("GROUPS")).toEqual([313]);
+        expect(shaderCounts("GROUPS")).toEqual([313]);
     });
 
     it("leaves arithmetic to the consts, so that `*` only ever means one thing in a comment", () => {
-        expect(counts("CHASERS / THREADS")).toMatch(/anything worked out belongs in a const/);
-        expect(counts("GROUPS * 2")).toMatch(/anything worked out belongs in a const/);
+        expect(shaderCounts("CHASERS / THREADS")).toMatch(/anything worked out belongs in a const/);
+        expect(shaderCounts("GROUPS * 2")).toMatch(/anything worked out belongs in a const/);
     });
 
     it("says what a const is when it is not a count", () => {
-        expect(counts("EMPTY")).toMatch(/but `EMPTY` is 0/);
-        expect(counts("SPREAD")).toMatch(/but `SPREAD` is 2.5/);
+        expect(shaderCounts("EMPTY")).toMatch(/but `EMPTY` is 0/);
+        expect(shaderCounts("SPREAD")).toMatch(/but `SPREAD` is 2.5/);
     });
 
     it("refuses names that are not module-scope consts", () => {
-        expect(counts("CHASER")).toMatch(/`CHASER` is not a const declared in the shader/);
-        expect(counts("LOCAL")).toMatch(/`LOCAL` is not a const declared in the shader/);
-        expect(counts("TUNED")).toMatch(/`TUNED` is an override/);
-        expect(counts("CORNER")).toMatch(/`CORNER` is not a single number/);
+        expect(shaderCounts("CHASER")).toMatch(/`CHASER` is not a const declared in the shader/);
+        expect(shaderCounts("LOCAL")).toMatch(/`LOCAL` is not a const declared in the shader/);
+        expect(shaderCounts("TUNED")).toMatch(/`TUNED` is an override/);
+        expect(shaderCounts("CORNER")).toMatch(/`CORNER` is not a single number/);
     });
 
     it("refuses dimensions run together or left out", () => {
-        expect(counts("CHASERS THREADS")).toMatch(
+        expect(shaderCounts("CHASERS THREADS")).toMatch(
             /`CHASERS THREADS` is not a number or a const - counts are separated by commas/,
         );
-        expect(counts("8,, 1")).toMatch(/a dimension is missing between commas/);
+        expect(shaderCounts("8,, 1")).toMatch(/a dimension is missing between commas/);
     });
 });
 
