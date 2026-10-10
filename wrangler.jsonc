@@ -5,5 +5,7 @@
     "compatibility_date": "2026-10-10",
     "assets": {
         "directory": "./dist"
-    }
+    },
+    // Lets Workers Builds deploy a preview of each non-main branch (via `wrangler preview`)
+    "previews": {}
 }
