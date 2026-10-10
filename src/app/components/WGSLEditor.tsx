@@ -1,6 +1,6 @@
-import { Button, IconName, Menu, MenuItem, PopoverNext, Section } from "@blueprintjs/core";
-import { Editor } from "@monaco-editor/react";
-import { useState } from "react";
+import { Button, IconName, Menu, MenuItem, NonIdealState, PopoverNext, Section } from "@blueprintjs/core";
+import { Editor, loader } from "@monaco-editor/react";
+import { useEffect, useState } from "react";
 import chasers from "../../examples/chasers.wgsl";
 import defaultComputeShader from "../../examples/default_compute_shader.wgsl";
 import defaultVertexShader from "../../examples/default_vertex_shader.wgsl";
@@ -25,7 +25,16 @@ export const WGSLEditor: React.FC = () => {
     const wgsl = useAppState((state) => state.wgsl);
     const setWGSL = useAppState((state) => state.setWGSL);
     const loadExample = useAppState((state) => state.loadExample);
-    const [setEditorValue, setSetEditorValue] = useState<(value: string) => void>(noop);
+    // A function passed straight to useState is treated as an initialiser and called, so wrap it.
+    const [setEditorValue, setSetEditorValue] = useState<(value: string) => void>(() => noop);
+    // Monaco is fetched from a CDN, and @monaco-editor/react only logs a failed load, so ask the loader directly.
+    const [editorLoadError, setEditorLoadError] = useState<unknown>(null);
+
+    useEffect(() => {
+        loader.init().catch((error: unknown) => {
+            if ((error as { type?: string } | null)?.type !== "cancelation") setEditorLoadError(error ?? new Error());
+        });
+    }, []);
 
     const setExample = (example: string) => () => {
         // Loaded before the editor is told, so the change the editor then reports is already the code
@@ -66,17 +75,26 @@ export const WGSLEditor: React.FC = () => {
                 }
             >
                 <div className="bg-slate-200 p-2 grow shrink min-w-0">
-                    <Editor
-                        defaultLanguage="wgsl"
-                        defaultValue={INITIAL_APP_STATE.wgsl}
-                        onChange={setWGSL}
-                        onMount={(editor) =>
-                            // Extra currying because react calls functions to get the new state value
-                            setSetEditorValue(
-                                (_state: unknown) => (value: string) => editor.getModel()?.setValue(value),
-                            )
-                        }
-                    />
+                    {editorLoadError ? (
+                        <NonIdealState
+                            icon="offline"
+                            title="Editor Not Available"
+                            description="The code editor couldn't load. It is fetched from a CDN, so check your connection and reload the page."
+                            action={<Button onClick={() => window.location.reload()}>Reload</Button>}
+                        />
+                    ) : (
+                        <Editor
+                            defaultLanguage="wgsl"
+                            defaultValue={INITIAL_APP_STATE.wgsl}
+                            onChange={setWGSL}
+                            onMount={(editor) =>
+                                // Extra currying because react calls functions to get the new state value
+                                setSetEditorValue(
+                                    (_state: unknown) => (value: string) => editor.getModel()?.setValue(value),
+                                )
+                            }
+                        />
+                    )}
                 </div>
             </Section>
         </div>
