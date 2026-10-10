@@ -1,0 +1,9 @@
+// Deployed by Cloudflare Workers Builds on every push to main.
+// The site is static: no Worker script, just the Vite build output.
+{
+    "name": "wgsl-playground",
+    "compatibility_date": "2026-10-10",
+    "assets": {
+        "directory": "./dist"
+    }
+}
