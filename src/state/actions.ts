@@ -151,7 +151,8 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
 
             const result = parseWGSL(state.wgsl);
             if (result.type === "failed-parse") set({ ...state, ...result, device, canvas: state.canvas }, true);
-            else startGPUProcessing({ ...state, ...result, ...firstParse(state, result), device, canvas: state.canvas });
+            else
+                startGPUProcessing({ ...state, ...result, ...firstParse(state, result), device, canvas: state.canvas });
         },
         setCanvas: (canvas: HTMLCanvasElement | null) => {
             if (canvas === null) return;
@@ -172,7 +173,8 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
 
             const result = parseWGSL(state.wgsl);
             if (result.type === "failed-parse") set({ ...state, ...result, canvas, device: state.device }, true);
-            else startGPUProcessing({ ...state, ...result, ...firstParse(state, result), canvas, device: state.device });
+            else
+                startGPUProcessing({ ...state, ...result, ...firstParse(state, result), canvas, device: state.device });
         },
         setWGSL: (wgsl: string | undefined) => {
             if (wgsl !== undefined) applyWGSL(wgsl, "edit");
@@ -242,6 +244,7 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
                     type: "function",
                     runnable: {
                         ...runnable,
+                        // oxlint-disable-next-line oxc/no-map-spread -- state is immutable, so the edited argument is a new object
                         arguments: runnable.arguments.map((arg) =>
                             arg.name === name ? { ...arg, input, buffer } : arg,
                         ),
@@ -271,7 +274,8 @@ export const getAppActions = (set: StoreApi<AppState>["setState"], get: StoreApi
         },
         reset: () => {
             const state = get();
-            if (state.type === "running" || state.type === "finished") startGPUProcessing({ ...state, type: "running" });
+            if (state.type === "running" || state.type === "finished")
+                startGPUProcessing({ ...state, type: "running" });
         },
         setOutputRendered: (id, rendered) => {
             const { renderedOutputs } = get();

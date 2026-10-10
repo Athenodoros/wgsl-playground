@@ -1,0 +1,59 @@
+{
+    "$schema": "./node_modules/oxlint/configuration_schema.json",
+    "plugins": ["eslint", "typescript", "react", "oxc", "unicorn", "import", "vitest"],
+    "categories": {
+        "correctness": "error",
+        "suspicious": "error",
+        "perf": "error"
+    },
+    "env": {
+        "browser": true,
+        "es2020": true
+    },
+    "ignorePatterns": ["dist"],
+    "rules": {
+        // From ESLint's and typescript-eslint's recommended sets, which the categories above don't cover
+        "no-array-constructor": "error",
+        "no-case-declarations": "error",
+        "no-empty": "error",
+        "no-fallthrough": "error",
+        "no-prototype-builtins": "error",
+        "no-regex-spaces": "error",
+        "no-useless-assignment": "error",
+        "no-var": "error",
+        "prefer-const": "error",
+        "prefer-rest-params": "error",
+        "prefer-spread": "error",
+        "typescript/ban-ts-comment": "error",
+        "typescript/no-empty-object-type": "error",
+        "typescript/no-explicit-any": "error",
+        "typescript/no-namespace": "error",
+        "typescript/no-require-imports": "error",
+        "typescript/no-unsafe-function-type": "error",
+        "no-unused-vars": [
+            "error",
+            { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "caughtErrorsIgnorePattern": "^_" }
+        ],
+
+        // Shadowing is fine in a callback that builds the value being declared, e.g. `const [{ module }] = run(() => { const module = ... })`
+        "no-shadow": ["error", { "ignoreOnInitialization": true }],
+        // CSS is imported for its side effect
+        "import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }],
+
+        // React: the rules of hooks, and fast refresh needing component-only files
+        "react/rules-of-hooks": "error",
+        "react/exhaustive-deps": "error",
+        "react/unsupported-syntax": "error",
+        "react/only-export-components": ["error", { "allowConstantExport": true }],
+
+        // The JSX transform doesn't need React in scope
+        "react/react-in-jsx-scope": "off"
+    },
+    "overrides": [
+        {
+            // Tests keep small helpers next to the cases that use them
+            "files": ["**/*.test.ts"],
+            "rules": { "unicorn/consistent-function-scoping": "off" }
+        }
+    ]
+}

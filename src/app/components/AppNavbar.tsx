@@ -61,9 +61,9 @@ const HelpNavbarButton: React.FC = () => {
                             <h3 className="font-semibold mb-2">Default binding values</h3>
                             <p className="mb-3">
                                 Add a comment to a resource binding declaration to choose its initial values. One value
-                                fills the whole binding, whatever its type. <code>rand(min, max)</code> draws evenly from
-                                a range, and <code>randg(mean, deviation)</code> from a normal distribution, separately
-                                for every slot they fill:
+                                fills the whole binding, whatever its type. <code>rand(min, max)</code> draws evenly
+                                from a range, and <code>randg(mean, deviation)</code> from a normal distribution,
+                                separately for every slot they fill:
                             </p>
                             <pre className="bg-slate-100 rounded p-3 overflow-x-auto text-xs">
                                 <code>{`@group(0) @binding(0) var<storage, read_write> output: array<i32>; // 0
@@ -128,7 +128,7 @@ fn vertex_main() -> @builtin(position) vec4<f32> { }`}</code>
                             <p className="my-3">
                                 This is the number of work groups to dispatch, not the size of each one - that is what{" "}
                                 <code>@workgroup_size</code> sets. Trailing dimensions can be left off, so{" "}
-                                <code>// 16</code> means <code>16, 1, 1</code>.
+                                <code>{"// 16"}</code> means <code>16, 1, 1</code>.
                             </p>
                             <p className="my-3">
                                 A count can also name one of the shader's own <code>const</code> declarations, so it
@@ -185,8 +185,8 @@ fn draw() { }`}</code>
                             <h3 className="font-semibold mb-2">Collapsing the panels</h3>
                             <p className="mb-3">
                                 A shader that is mostly a picture can ask for the Struct Layouts, Resource Binding
-                                Values and Function Runner panels to start collapsed, leaving room for its outputs,
-                                with a comment on a line of its own:
+                                Values and Function Runner panels to start collapsed, leaving room for its outputs, with
+                                a comment on a line of its own:
                             </p>
                             <pre className="bg-slate-100 rounded p-3 overflow-x-auto text-xs">
                                 <code>{`// playground-collapse-sections`}</code>
@@ -209,8 +209,8 @@ fn draw() { }`}</code>
                                 Editing a <code>var&lt;uniform&gt;</code> or <code>var&lt;storage, read&gt;</code>{" "}
                                 binding while the loop runs writes the new value straight into it, without starting
                                 over, so a simulation can be tuned as it runs. The shader cannot write to those, so
-                                there is nothing for the edit to throw away. Editing a binding the shader writes to,
-                                or giving an array a new length, starts the loop again.
+                                there is nothing for the edit to throw away. Editing a binding the shader writes to, or
+                                giving an array a new length, starts the loop again.
                             </p>
                             <p className="mb-3">
                                 Mark an <code>f32</code> uniform with this comment to have the playground fill it with

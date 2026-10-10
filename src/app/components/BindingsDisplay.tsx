@@ -30,8 +30,8 @@ export const BindingsDisplay: React.FC = () => {
             {bindings.length ? (
                 <SectionCard padded={false} className="my-4">
                     <div className="flex flex-col gap-4">
-                        {bindings.map((binding, index) => (
-                            <InnerBindingDisplay key={index} binding={binding} />
+                        {bindings.map((binding) => (
+                            <InnerBindingDisplay key={binding.id} binding={binding} />
                         ))}
                     </div>
                 </SectionCard>

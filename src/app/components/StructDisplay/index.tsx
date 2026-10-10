@@ -41,8 +41,8 @@ const SingleStructDisplay: React.FC<{ struct: StructInfo }> = ({ struct }) => {
                 <div className="flex flex-col gap-2">
                     {entries
                         .filter((m) => m.name !== "padding")
-                        .map((m, idx) => (
-                            <span key={idx} className="flex gap-1 items-center">
+                        .map((m) => (
+                            <span key={m.name} className="flex gap-1 items-center">
                                 <span
                                     className="w-3 h-3 rounded-full"
                                     style={{ backgroundColor: m.styles.backgroundColor }}

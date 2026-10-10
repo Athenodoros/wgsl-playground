@@ -280,11 +280,11 @@ const createRenderSession = (
     });
 
     /** Draws a frame onto the canvas, and returns the texture it was drawn into. */
-    const draw = (deltaTime: number, context: GPUCanvasContext) => {
+    const draw = (deltaTime: number, canvasContext: GPUCanvasContext) => {
         writeDeltaTime(device, bindings, resources.buffers, deltaTime);
 
         const commandEncoder = device.createCommandEncoder();
-        const texture = context.getCurrentTexture();
+        const texture = canvasContext.getCurrentTexture();
         const renderpass = commandEncoder.beginRenderPass({
             colorAttachments: [{ view: texture.createView(), loadOp: "clear", storeOp: "store" }],
             depthStencilAttachment: depthTexture && {
@@ -391,7 +391,9 @@ const createComputeSession = (
                 // outputs panel.
                 values: Promise.all(
                     bindings
-                        .filter((binding): binding is WgslBufferBinding => binding.kind === "buffer" && binding.writable)
+                        .filter(
+                            (binding): binding is WgslBufferBinding => binding.kind === "buffer" && binding.writable,
+                        )
                         .map((binding): Promise<BindingOutput> =>
                             shouldRead(binding)
                                 ? readBufferValue(device, resources.buffers[binding.id], binding.type).then(

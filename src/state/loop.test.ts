@@ -65,7 +65,7 @@ const recordingSession = (read: (withTexture: boolean) => Promise<RunnerResults>
 
 const callbacks = () => {
     const shown: [RunnerResults, LoopClock][] = [];
-    const halted = vi.fn();
+    const halted = vi.fn<() => void>();
     return { shown, halted, show: (results: RunnerResults, clock: LoopClock) => shown.push([results, clock]) };
 };
 

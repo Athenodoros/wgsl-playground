@@ -8,7 +8,7 @@ import { AppState } from "./types";
 
 vi.mock(import("../utilities/runWGSLFunction"), async (original) => ({
     ...(await original()),
-    createRunSession: vi.fn(),
+    createRunSession: vi.fn<typeof import("../utilities/runWGSLFunction").createRunSession>(),
 }));
 
 // parseWGSL hangs the reflection off `window` for poking at in the console, and these tests run in node.

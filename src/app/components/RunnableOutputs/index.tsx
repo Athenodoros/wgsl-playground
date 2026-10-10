@@ -65,8 +65,9 @@ export const RunnableOutputs: React.FC = () => {
             <OutputCanvas hidden={!drawsToCanvas || (results !== null && results.type !== "outputs")} />
             {results?.type === "errors"
                 ? results.errors.map((error, idx) => (
+                      // oxlint-disable-next-line react/no-array-index-key -- the errors are replaced as a whole, never reordered
                       <div className="mx-4" key={idx}>
-                          <Callout key={idx} title={error.title} icon={error.icon} intent={error.intent}>
+                          <Callout title={error.title} icon={error.icon} intent={error.intent}>
                               {error.text}
                           </Callout>
                       </div>

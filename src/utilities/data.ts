@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 /**
  * Order By
@@ -98,6 +98,7 @@ export const deepEqualsList = <T>(array: T[]): boolean => {
 export type NonEmpty<T> = [T, ...T[]];
 export const nonEmpty = <T>(array: T[]): NonEmpty<T> | null => (array.length > 0 ? (array as NonEmpty<T>) : null);
 
+// oxlint-disable-next-line unicorn/no-array-reverse -- toReversed() is ES2023, past the ES2020 target, and this reverses a copy
 export const reverse = <T>(array: T[]): T[] => [...array].reverse();
 export const range = (a: number, b?: number, step = 1): number[] => {
     if (step === 0) throw new Error("Step cannot be 0");
